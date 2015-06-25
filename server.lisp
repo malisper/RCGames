@@ -41,9 +41,6 @@
 
 (defparameter show-output* nil "If T, any output to any player will be shown.")
 
-(defparameter maximum-number-illegal-entries* 3
-  "The maximum number of illegal entries a human is allowed before they are automatically disconnected.")
-
 (mac defcont (name args1 args2 &body body)
   "Define a continuation. It takes two arguments, the arguments to
    create the continuation and the arguments actually passed to the
@@ -69,13 +66,40 @@
                         (let listener (socket-listen *wildcard-host* hport :reuse-address t)
                           (push listener sockets*)
                           (push listener game->sockets*.game)
-                          (= conts*.listener (add-player game 'human)))
+                          (= (cont listener) (add-player game 'human)))
                         (let listener (socket-listen *wildcard-host* aport :reuse-address t)
                           (push listener sockets*)
                           (push listener game->sockets*.game)
-                          (= conts*.listener (add-player game 'ai))))
+                          (= (cont listener) (add-player game 'ai))))
                       (listening-loop))
     (mapc [disconnect _ t] (keys game->sockets*))))
+
+(def cont (socket)
+  "Returns the permanent continuation for SOCKET."
+  conts*.socket)
+
+(def (setf cont) (continuation socket)
+  "Sets the continuation for the given socket."
+  (setf conts*.socket continuation))
+
+(def temp-cont (socket)
+  "Returns the temporary continuation for SOCKET. A continuation that
+   will be removed as soon as it is returned."
+  (prog1 temp-conts*.socket
+    (rem-temp-cont socket)))
+
+(def rem-cont (socket)
+  "Remove the continuation for the given socket."
+  (remhash socket conts*))
+
+(def (setf temp-cont) (continuation socket)
+  "Sets the temporary continuation for a given socket. It will be
+   removed as soon as it is returned by temp-cont."
+  (setf temp-conts*.socket continuation))
+
+(def rem-temp-cont (socket)
+  "Removes the temporary continuation for the given socket."
+  (remhash socket temp-conts*))
 
 (def listening-loop ()
   "The main loop for listening."
@@ -88,19 +112,18 @@
                 ;; have disconnected some of the other ready sockets.
                 (do (disconnect socket->game*.socket t)
                     (return))
-              conts*.socket
+              (cont socket)
                 (call it socket)
-              temp-conts*.socket
-                (let prev temp-conts*.socket
-                  (remhash socket temp-conts*)
-                  (= sockets* (rem socket sockets*))
-                  (restart-case (call it socket)
-                    (restart-turn ()
-                      (= temp-conts*.socket prev) (push socket sockets*)
-                      (send-hu socket->game*.socket!current "Enter a legal move.~%"))
-                    (disconnect () (disconnect socket->game*.socket t) (return))))
+              (temp-cont socket)
+                (restart-case (call it socket)
+                  (restart-turn ()
+                    (= (temp-cont socket) it)
+                    (send-hu socket->game*.socket!current "Enter a legal move.~%"))
+                  (disconnect () (disconnect socket->game*.socket t) (return)))
               :else
-                (error "No continuation for socket ~A." socket))))))
+                (do (cerror "Ignore input." "No continuation for socket ~A." socket)
+                    (while (listen socket!socket-stream)
+                      (read-line :from socket!socket-stream))))))))
 
 (def disconnect (game ? pdisc)
   "Disconnect a game."
@@ -148,9 +171,8 @@
   "Initialize the actual game."
   (= game!board (make-array '(3 3) :initial-element nil))
   (= game!current (car game!players))
-  (= (get temp-conts* game!players!car!socket)
-     (play-turn game))
-  (push game!players!car!socket sockets*)
+  (= (temp-cont game!current!socket) (play-turn game))
+  (push game!current!socket sockets*)
   (send-hu game!players "~A" game ())
   
   (send-hu game!current "It is your turn.~%")
@@ -172,8 +194,7 @@
           (= game!current (next game))
           (send-hu game!current "Your turn.~%" ())
           (push game!current!socket sockets*)
-          (= (get temp-conts* game!current!socket)
-             (play-turn game))))))
+          (= (temp-cont game!current!socket) (play-turn game))))))
 
 (defmethod print-object ((game tic-tac-toe) stream)
   (let *standard-output* stream
@@ -211,14 +232,14 @@
       (and (iter out
                  (for r from 0 below 3)
                  (iter (for c from 0 below 3)
-                       (in out (never game!board.r.c))))
+                       (in out (always game!board.r.c))))
            'tie)))
 
 (def announce-winner (game)
   "Announce the winner of the game."
   (if (is (winner game) 'tie)
-      (do (send-hu game!p "It was a tie.~%")
-          (send-ai game!p "0~%"))
+      (do (send-hu game!players "It was a tie.~%")
+          (send-ai game!players "0~%"))
       (do (send-hu game!players "~:[Player 2~;Player 1~] won!~%" (is (winner game) 'x))
           (send-ai game!players "~:[-1~;1~]~%" (is (winner game) 'o)))))
 
@@ -252,7 +273,7 @@
              :format-control "The column index ~A is illegal."
              :format-arguments (list r)))
     (when game!board.r.c
-      (error 'invalid-move "The square is already taken."))
+      (error 'invalid-move :format-control "The square is already taken."))
     (values r c)))
 
 (def restart-turn-handler (&rest args)
