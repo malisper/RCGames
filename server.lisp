@@ -39,7 +39,7 @@
   "A table mapping from a game to all of the sockets we need to
    disconnect if a player disconnects.")
 
-(defparameter show-output* nil "If T, any output to any player will be shown.")
+(defparameter show-output* t "If T, any output to any player will be shown.")
 
 (mac defcont (name args1 args2 &body body)
   "Define a continuation. It takes two arguments, the arguments to
@@ -60,19 +60,30 @@
 ;;     (mapc #'safely-close sockets*)
 ;;     (= sockets* '())))
 
-(def start-server (game-type hport aport &rest args)
-  "Start a server playing a game of type GAME"
-  (unwind-protect (do (let game (apply #'inst game-type args)
-                        (let listener (socket-listen *wildcard-host* hport :reuse-address t)
-                          (push listener sockets*)
-                          (push listener game->sockets*.game)
-                          (= (cont listener) (add-player game 'human)))
-                        (let listener (socket-listen *wildcard-host* aport :reuse-address t)
-                          (push listener sockets*)
-                          (push listener game->sockets*.game)
-                          (= (cont listener) (add-player game 'ai))))
-                      (listening-loop))
-    (mapc [disconnect _ t] (keys game->sockets*))))
+;; (def start-server (game-type hport aport &rest args)
+;;   "Start a server playing a game of type GAME"
+;;   (unwind-protect (do (let game (apply #'inst game-type args)
+;;                         (let listener (socket-listen *wildcard-host* hport :reuse-address t)
+;;                           (push listener sockets*)
+;;                           (push listener game->sockets*.game)
+;;                           (= (cont listener) (add-player game 'human)))
+;;                         (let listener (socket-listen *wildcard-host* aport :reuse-address t)
+;;                           (push listener sockets*)
+;;                           (push listener game->sockets*.game)
+;;                           (= (cont listener) (add-player game 'ai))))
+;;                       (listening-loop))
+;;     (mapc [disconnect _ t] (keys game->sockets*))))
+
+(def start-server (game-type port &rest args)
+  (let listener (socket-listen *wildcard-host* port :reuse-address t)
+    (unwind-protect (do (push listener sockets*)
+                        ;(push listener game->sockets*.current-game*)
+                        (= (cont listener) (add-player (apply #'inst game-type args) 'ai))
+                        (listening-loop))
+      (mapc [disconnect _ t] (keys game->sockets*))
+      (socket-close listener)
+      (= sockets* (rem listener sockets*))
+      (rem-cont listener))))
 
 (def cont (socket)
   "Returns the permanent continuation for SOCKET."
@@ -140,7 +151,7 @@
     (remhash socket socket->game*)
     (rem-cont socket)
     (rem-temp-cont socket)
-    (mapc #'socket-close game->sockets*.game))
+    (socket-close socket))
   (remhash game game->sockets*))
 
 (defcont add-player (game type) (listener)
@@ -152,11 +163,14 @@
     (= socket->game*.socket game)
     (push player game!players)
     (when (is game!players!len game!need)
-      (let listeners (set-difference game->sockets*.game (map #'socket game!players))
-        (= game->sockets*.game (set-difference game->sockets*.game listeners))
-        (= sockets* (set-difference sockets* listeners))
-        (mapc #'socket-close listeners))
-      (start-game game))))
+      ;; (let listeners (set-difference game->sockets*.game (map #'socket game!players))
+      ;;   (= game->sockets*.game (set-difference game->sockets*.game listeners))
+      ;;   (= sockets* (set-difference sockets* listeners))
+      ;;   (mapc #'socket-close listeners))
+
+      (start-game game)
+      ;; Have the continuation add-players to a new game.
+      (= game (make-tic-tac-toe)))))
 
 (def send (players &rest args)
   "Takes a single player or a list of players and formats the string to all of them."
@@ -193,11 +207,14 @@
   (declare (ignore socket))
   (mvb (r c) (read-input game game!current)
     (= game!board.r.c (if (is game!current game!players!car) 'x 'o))
-    (send-ai game!next "~A ~A~%" r c)
     (aif (winner game)
       (do (announce-winner game)
           (disconnect game))
       (do (send-hu game!players "~A" game ())
+          ;; We only want to send the move if the game is still going
+          ;; on. If the game is over, there is no reason to send the
+          ;; opponents move.
+          (send-ai game!next "~A ~A~%" r c)
           (= game!current (next game))
           (send-hu game!current "Your turn.~%" ())
           (push game!current!socket sockets*)
