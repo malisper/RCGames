@@ -117,13 +117,18 @@
               (temp-cont socket)
                 (restart-case (call it socket)
                   (restart-turn ()
+                    :report "Restart the current player's turn."
                     (= (temp-cont socket) it)
                     (send-hu socket->game*.socket!current "Enter a legal move.~%"))
-                  (disconnect () (disconnect socket->game*.socket t) (return)))
+                  (disconnect ()
+                    :report "Disconnect the current game."
+                    (disconnect socket->game*.socket t) (return)))
               :else
-                (do (cerror "Ignore input." "No continuation for socket ~A." socket)
-                    (while (listen socket!socket-stream)
-                      (read-line :from socket!socket-stream))))))))
+                (do (restart-case (error "No continuation for socket ~A." socket)
+                      (ignore-input ()
+                        :report "Ignore all of the new information from the socket."
+                        (while (listen socket!socket-stream)
+                          (read-line :from socket!socket-stream))))))))))
 
 (def disconnect (game ? pdisc)
   "Disconnect a game."
@@ -132,8 +137,10 @@
     (send-ai game!players "-1~%"))
   (zap #'set-difference sockets* game->sockets*.game)
   (each socket game->sockets*.game
-    (remhash socket socket->game*))
-  (mapc #'socket-close game->sockets*.game)
+    (remhash socket socket->game*)
+    (rem-cont socket)
+    (rem-temp-cont socket)
+    (mapc #'socket-close game->sockets*.game))
   (remhash game game->sockets*))
 
 (defcont add-player (game type) (listener)
@@ -261,20 +268,24 @@
   "Read the input for a tic-tac-toe game. The only reason this
    function exists is because the input methods for a human and for a
    computer are the same."
-  (register-groups-bind ((#'parse-integer r c))
-      ((create-scanner "^(\\d) (\\d)\\s*$" :multi-line-mode t)
-       (read-line :from player!socket!socket-stream))
-    (unless (<= 0 r 2)
-      (error 'invalid-move
-             :format-control "The row index ~A is illegal."
-             :format-arguments (list r)))
-    (unless (<= 0 c 2)
-      (error 'invalid-move
-             :format-control "The column index ~A is illegal."
-             :format-arguments (list r)))
-    (when game!board.r.c
-      (error 'invalid-move :format-control "The square is already taken."))
-    (values r c)))
+  (let line (read-line :from player!socket!socket-stream)
+    (mvb (match strings) (scan-to-strings "^(\\d) (\\d)\\s*$" line)
+      (unless match
+        (error 'invalid-move
+               :format-control "'~A' is malformed input."
+               :format-arguments (list )))
+      (let (r c) (map #'parse-integer strings)
+        (unless (<= 0 r 2)
+          (error 'invalid-move
+                 :format-control "The row index ~A is illegal."
+                 :format-arguments (list r)))
+        (unless (<= 0 c 2)
+          (error 'invalid-move
+                 :format-control "The column index ~A is illegal."
+                 :format-arguments (list r)))
+        (when game!board.r.c
+          (error 'invalid-move :format-control "The square is already taken."))
+        (values r c)))))
 
 (def restart-turn-handler (&rest args)
   "A restart handler for restarting the current players turn."
@@ -285,3 +296,8 @@
   "A restart handler for disconnecting the current game."
   (declare (ignore args))
   (invoke-restart 'disconnect))
+
+(def ignore-input-handler (&rest args)
+  "A restart handler for ignoring the input from a socket with no continuation."
+  (declare (ignore args))
+  (invoke-restart 'ignore-input))
