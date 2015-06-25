@@ -3,7 +3,8 @@
 (syntax:use-syntax :clamp)
 
 (deftem (game (:conc-name nil))
-  players need)
+  need  
+  players)
 
 (deftem (player (:conc-name nil))
   socket)

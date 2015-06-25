@@ -2,10 +2,10 @@
 (in-package :server)
 (syntax:use-syntax :clamp)
 
-(defparameter dims* 5 "The side length of the tic-tac-toe board.")
+(defparameter dims* 3 "The side length of the tic-tac-toe board.")
 
 (deftem (tic-tac-toe (:conc-name nil) (:include game))
-  (need 2) ; The number of players needed to play a game.
+  (need 2)
   current
   (board (make-array (list dims* dims*) :initial-element nil)))
 
