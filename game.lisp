@@ -35,15 +35,15 @@
 (defgeneric start-game (game)
   (:documentation "Starts the actual game."))
 
-(defgeneric read-input (game player)
+(defgeneric read-input (game player &rest args)
   (:documentation "Reads the input for the game."))
 
-(defmethod read-input :around (game (player human))
+(defmethod read-input :around (game (player human) &rest args)
   ;; We should give players multiple chances to enter correct input.
   (handler-bind ((invalid-move #'restart-turn-handler))
     (call-next-method)))
 
-(defmethod read-input :around (game (player ai))
+(defmethod read-input :around (game (player ai) &rest args)
   ;; We should give the ai a single chance before disconnecting them
   ;; when they make an invalid move.
   (handler-bind ((invalid-move #'disconnect-handler))

@@ -5,8 +5,8 @@
   (:shadowing-import-from :experimental
      :repeat :def :fn :defmemo :mac :while
      :until :in :coerce :with :summing :defmethod)
-  (:shadowing-import-from :ppcre
-     :split)
+  (:shadowing-import-from :ppcre :split)
+  (:shadow :next)
   (:export :tic-tac-toe))
 
 (in-package :ttt)
@@ -55,7 +55,7 @@
           ;; Tells the AI the game is still going on.
           (send-ai game!current "~A ~A~%" r c)
           (send-hu game!current "Your turn.~%" ())
-        (= (temp-cont game!current!socket) (play-turn game))))))
+          (= (temp-cont game!current!socket) (play-turn game))))))
 
 (def next (game)
   "Returns the next player in the game."
@@ -95,13 +95,9 @@
       (do (send-hu game!players "~:[Player 2~;Player 1~] won!~%" (is (winner game) 'x))
           (send-ai game!players "~:[1~;2~]~%" (is (winner game) 'o)))))
 
-(defmethod read-input ((game tic-tac-toe) player)
-  (ttt-read-input game player))
-
-(def ttt-read-input (game player)
-  "Read the input for a tic-tac-toe game. The only reason this
-   function exists is because the input methods for a human and for a
-   computer are the same."
+(defmethod read-input ((game tic-tac-toe) player &rest args)
+  "Read the input for a tic-tac-toe game"
+  (declare (ignore args))
   (let line (read-line :from player!socket!socket-stream)
     (mvb (match strings) (scan-to-strings "^(\\d) (\\d)\\s*$" line)
       (unless match
@@ -116,7 +112,7 @@
         (unless (<= 0 c (dec dims*))
           (error 'invalid-move
                  :format-control "The column index ~A is illegal."
-                 :format-arguments (list r)))
+                 :format-arguments (list c)))
         (when game!board.r.c
           (error 'invalid-move :format-control "The square is already taken."))
         (values r c)))))
