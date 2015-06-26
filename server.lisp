@@ -81,9 +81,8 @@
               (temp-cont socket)
                 (restart-case (call it socket)
                   (restart-turn ()
-                    :report "Restart the current player's turn."
-                    (= (temp-cont socket) it)
-                    (send-hu socket->game*.socket!current "Enter a legal move.~%"))
+                    :report "Restart the continuation for the socket."
+                    (= (temp-cont socket) it))
                   (disconnect ()
                     :report "Disconnect the current game."
                     (send-hu socket->game*.socket!players "An unknown error occured.~%")
