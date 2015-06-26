@@ -32,12 +32,6 @@
   "Sends the message only to the human players in PLAYERS."
   (apply #'send (keep #'human-p (mklist players)) args))
 
-(def next (game)
-  "Returns the next player in the game."
-  (aif (cadr+mem game!current game!players)
-    it
-    (car game!players)))
-
 (defgeneric start-game (game)
   (:documentation "Starts the actual game."))
 

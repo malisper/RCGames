@@ -71,7 +71,7 @@
         (aif2 (and (~isa socket 'stream-server-usocket)
                    (is socket (peek-char nil (socket-stream socket) nil socket)))
                 (do (send-hu socket->game*.socket!players "Some player quit.~%")
-                    (send-hu socket->game*.socket!players "~A~%" disconnected-code*)
+                    (send-ai socket->game*.socket!players "~A~%" disconnected-code*)
                     (disconnect socket->game*.socket)
                     ;; We need to go through the loop again since we may
                     ;; have disconnected some of the other ready sockets.
@@ -86,8 +86,8 @@
                     (send-hu socket->game*.socket!current "Enter a legal move.~%"))
                   (disconnect ()
                     :report "Disconnect the current game."
-                    (send-hu socket->game*.socket!current "An unknown error occured.~%")
-                    (send-ai socket->game*.socket!current "~A~%" unknown-error-code*)
+                    (send-hu socket->game*.socket!players "An unknown error occured.~%")
+                    (send-ai socket->game*.socket!players "~A~%" unknown-error-code*)
                     (return)))
               :else
                 (restart-case (error "No continuation for socket ~A." socket)

@@ -1,5 +1,15 @@
 ;;;; This is the code for playing regular tic-tac-toe.
-(in-package :server)
+(defpackage :tic-tac-toe
+  (:nicknames :ttt)
+  (:use :clamp :experimental :iter :usocket :ppcre :server)
+  (:shadowing-import-from :experimental
+     :repeat :def :fn :defmemo :mac :while
+     :until :in :coerce :with :summing :defmethod)
+  (:shadowing-import-from :ppcre
+     :split)
+  (:export :tic-tac-toe))
+
+(in-package :ttt)
 (syntax:use-syntax :clamp)
 
 (defparameter dims* 3 "The side length of the tic-tac-toe board.")
@@ -23,8 +33,7 @@
 (defmethod start-game ((game tic-tac-toe))
   "Initialize the actual game."
   (= game!current (car game!players))
-  (= (temp-cont game!current!socket) (play-ttt-turn game))
-  (push game!current!socket sockets*)
+  (= (temp-cont game!current!socket) (play-turn game))
   (send-hu game!players "~A" game ())
   
   (send-hu game!current "It is your turn.~%")
@@ -33,7 +42,7 @@
   (send-ai game!current "1~%")
   (send-ai game!next    "2~%"))
 
-(defcont play-ttt-turn (game) (socket)
+(defcont play-turn (game) (socket)
   "Performs a turn for the current player."
   (declare (ignore socket))
   (mvb (r c) (read-input game game!current)
@@ -46,8 +55,13 @@
           ;; Tells the AI the game is still going on.
           (send-ai game!current "~A ~A~%" r c)
           (send-hu game!current "Your turn.~%" ())
-          (push game!current!socket sockets*)
-          (= (temp-cont game!current!socket) (play-ttt-turn game))))))
+        (= (temp-cont game!current!socket) (play-turn game))))))
+
+(def next (game)
+  "Returns the next player in the game."
+  (aif (cadr+mem game!current game!players)
+    it
+    (car game!players)))
 
 (def winner (game)
   "Is there a winner of this game? If so return the piece of that player."
