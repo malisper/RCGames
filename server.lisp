@@ -55,12 +55,13 @@
                         ;(push listener game->sockets*.current-game*)
                         (= (cont listener) (add-player (apply #'inst game-type args) 'ai))
                         (listening-loop))
-      (mapc [disconnect _ :code unknown-error-code*
-                          :info "An error occured."]
-            (keys game->sockets*))
       (socket-close listener)
       (= sockets* (rem listener sockets*))
-      (rem-cont listener))))
+      (rem-cont listener)
+      (each game (copy-list game->sockets*!keys)
+        (send-hu game!players "An error occured~%.")
+        (send-ai game!players "~A~%" unknown-error-code*)
+        (disconnect game)))))
 
 (def listening-loop ()
   "The main loop for listening."
@@ -69,11 +70,11 @@
       (each socket sockets
         (aif2 (and (~isa socket 'stream-server-usocket)
                    (is socket (peek-char nil (socket-stream socket) nil socket)))
-                ;; We need to go through the loop again since we may
-                ;; have disconnected some of the other ready sockets.
-                (do (disconnect socket->game*.socket
-                                :info "Some player quit."
-                                :code disconnected-code*)
+                (do (send-hu socket->game*.socket!players "Some player quit.~%")
+                    (send-hu socket->game*.socket!players "~A~%" disconnected-code*)
+                    (disconnect socket->game*.socket)
+                    ;; We need to go through the loop again since we may
+                    ;; have disconnected some of the other ready sockets.
                     (return))
               (cont socket)
                 (call it socket)
@@ -85,9 +86,8 @@
                     (send-hu socket->game*.socket!current "Enter a legal move.~%"))
                   (disconnect ()
                     :report "Disconnect the current game."
-                    (disconnect socket->game*.socket
-                                :info "An unknown error occured."
-                                :code unknown-error-code*)
+                    (send-hu socket->game*.socket!current "An unknown error occured.~%")
+                    (send-ai socket->game*.socket!current "~A~%" unknown-error-code*)
                     (return)))
               :else
                 (restart-case (error "No continuation for socket ~A." socket)
@@ -96,11 +96,9 @@
                     (while (listen socket!socket-stream)
                       (read-line :from socket!socket-stream)))))))))
 
-(def disconnect (game ! info code)
+(def disconnect (game)
   "Disconnect a game. Sends INFO to all of the human players and CODE
    to all of the AI players."
-  (when info (send-hu game!players "~A~%" info))
-  (when code (send-ai game!players "~A~%" code))
   (zap #'set-difference sockets* game->sockets*.game)
   (each socket game->sockets*.game
     (remhash socket socket->game*)

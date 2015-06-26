@@ -44,7 +44,7 @@
           (disconnect game))
       (do (= game!current (next game))
           ;; Tells the AI the game is still going on.
-          (send-ai game!next "~A ~A~%" r c)
+          (send-ai game!current "~A ~A~%" r c)
           (send-hu game!current "Your turn.~%" ())
           (push game!current!socket sockets*)
           (= (temp-cont game!current!socket) (play-ttt-turn game))))))
