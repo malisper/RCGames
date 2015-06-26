@@ -17,6 +17,9 @@
   "A table mapping from a game to all of the sockets we need to
    disconnect if a player disconnects.")
 
+(defparameter disconnected-code* -1 "The code for when a player disconnects.")
+(defparameter unknown-error-code* -2 "The code for when an unknown error occurs.")
+
 ;; (def start-server (game-type ports &rest args)
 ;;   "Start a server playing a game of type GAME"
 ;;   (unwind-protect (do (each port (mklist ports)
@@ -52,7 +55,9 @@
                         ;(push listener game->sockets*.current-game*)
                         (= (cont listener) (add-player (apply #'inst game-type args) 'ai))
                         (listening-loop))
-      (mapc [disconnect _ t] (keys game->sockets*))
+      (mapc [disconnect _ :code unknown-error-code*
+                          :info "An error occured."]
+            (keys game->sockets*))
       (socket-close listener)
       (= sockets* (rem listener sockets*))
       (rem-cont listener))))
@@ -66,7 +71,9 @@
                    (is socket (peek-char nil (socket-stream socket) nil socket)))
                 ;; We need to go through the loop again since we may
                 ;; have disconnected some of the other ready sockets.
-                (do (disconnect socket->game*.socket t)
+                (do (disconnect socket->game*.socket
+                                :info "Some player quit."
+                                :code disconnected-code*)
                     (return))
               (cont socket)
                 (call it socket)
@@ -78,19 +85,22 @@
                     (send-hu socket->game*.socket!current "Enter a legal move.~%"))
                   (disconnect ()
                     :report "Disconnect the current game."
-                    (disconnect socket->game*.socket t) (return)))
+                    (disconnect socket->game*.socket
+                                :info "An unknown error occured."
+                                :code unknown-error-code*)
+                    (return)))
               :else
-                (do (restart-case (error "No continuation for socket ~A." socket)
-                      (ignore-input ()
-                        :report "Ignore all of the new information from the socket."
-                        (while (listen socket!socket-stream)
-                          (read-line :from socket!socket-stream))))))))))
+                (restart-case (error "No continuation for socket ~A." socket)
+                  (ignore-input ()
+                    :report "Ignore all of the new information from the socket."
+                    (while (listen socket!socket-stream)
+                      (read-line :from socket!socket-stream)))))))))
 
-(def disconnect (game ? pdisc)
-  "Disconnect a game."
-  (when pdisc
-    (send-hu game!players "A player disconnected, terminating the game.~%")
-    (send-ai game!players "-1~%"))
+(def disconnect (game ! info code)
+  "Disconnect a game. Sends INFO to all of the human players and CODE
+   to all of the AI players."
+  (when info (send-hu game!players "~A~%" info))
+  (when code (send-ai game!players "~A~%" code))
   (zap #'set-difference sockets* game->sockets*.game)
   (each socket game->sockets*.game
     (remhash socket socket->game*)

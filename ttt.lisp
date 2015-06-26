@@ -30,8 +30,8 @@
   (send-hu game!current "It is your turn.~%")
   (send-hu game!next    "It is your opponents turn.~%")
   
-  (send-ai game!current "0~%")
-  (send-ai game!next    "1~%"))
+  (send-ai game!current "1~%")
+  (send-ai game!next    "2~%"))
 
 (defcont play-ttt-turn (game) (socket)
   "Performs a turn for the current player."
@@ -42,11 +42,9 @@
     (aif (winner game)
       (do (announce-winner game)
           (disconnect game))
-      (do ;; We only want to send the move if the game is still going
-          ;; on. If the game is over, there is no reason to send the
-          ;; opponents move.
+      (do (= game!current (next game))
+          ;; Tells the AI the game is still going on.
           (send-ai game!next "~A ~A~%" r c)
-          (= game!current (next game))
           (send-hu game!current "Your turn.~%" ())
           (push game!current!socket sockets*)
           (= (temp-cont game!current!socket) (play-ttt-turn game))))))
@@ -81,7 +79,7 @@
       (do (send-hu game!players "It was a tie.~%")
           (send-ai game!players "0~%"))
       (do (send-hu game!players "~:[Player 2~;Player 1~] won!~%" (is (winner game) 'x))
-          (send-ai game!players "~:[-1~;1~]~%" (is (winner game) 'o)))))
+          (send-ai game!players "~:[1~;2~]~%" (is (winner game) 'o)))))
 
 (defmethod read-input ((game tic-tac-toe) player)
   (ttt-read-input game player))
