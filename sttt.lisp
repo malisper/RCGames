@@ -17,7 +17,8 @@
 (deftem (super-tic-tac-toe (:conc-name nil) (:include game))
   (need 2)
   current
-  (board (make-array (n-of 4 dims*) :initial-element nil)))
+  (board (make-array (n-of 4 dims*) :initial-element nil))
+  (metaboard (make-array (n-of 2 dims*) :initial-element nil)))
 
 (defmethod print-object ((game super-tic-tac-toe) stream)
   (let *standard-output* stream
@@ -70,7 +71,7 @@
     (= game!board.orow.ocol.irow.icol (if (is game!current game!players!car) 'x 'o))
     (send-log game "~A ~A ~A ~A~%" orow ocol irow icol)
     (send-hu game!players "~A" game ())
-    (aif (winner game)
+    (if (winner game)
       (do (announce-winner game)
           (disconnect game))
       (do (= game!current (next game))
@@ -97,29 +98,28 @@
 
 (def winner (game)
   "Is there a winner for the entire game?"
-  (let board (make-array (list dims* dims*))
-    (up r 0 dims*
-      (up c 0 dims*
-        (= board.r.c (cell-winner game!board.r.c))))
-    (or (iter (for r from 0 below dims*)
-              (thereis (iter (for c from 0 below dims*)
-                             (always (and (is board.r.c board.r.0) board.r.0)))))
-        (iter (for c from 0 below dims*)
-              (thereis (iter (for r from 0 below dims*)
-                             (always (and (is board.r.c board.0.c) board.0.c)))))
-        (and (iter (for i from 0 below dims*)
-                   (always (and (is board.i.i board.0.0))))
-             board.0.0)
-        (and (iter (for r from 0 below dims*)
-                   (for c from (dec dims*) downto 0)
-                   (always (and (is board.r.c (get board.0 (dec dims*)))
-                                board.r.c)))
-             (get board.0 (dec dims*)))
-        (and (iter out
-                   (for r from 0 below dims*)
-                   (iter (for c from 0 below dims*)
-                         (in out (always board.r.c))))
-             'tie))))
+  (up r 0 dims*
+    (up c 0 dims*
+      (or= game!metaboard.r.c (cell-winner game!board.r.c))))
+  (or (iter (for r from 0 below dims*)
+            (thereis (iter (for c from 0 below dims*)
+                           (always (and (is game!metaboard.r.c game!metaboard.r.0) game!metaboard.r.0)))))
+      (iter (for c from 0 below dims*)
+            (thereis (iter (for r from 0 below dims*)
+                           (always (and (is game!metaboard.r.c game!metaboard.0.c) game!metaboard.0.c)))))
+      (and (iter (for i from 0 below dims*)
+                 (always (and (is game!metaboard.i.i game!metaboard.0.0))))
+           game!metaboard.0.0)
+      (and (iter (for r from 0 below dims*)
+                 (for c from (dec dims*) downto 0)
+                 (always (and (is game!metaboard.r.c (get game!metaboard.0 (dec dims*)))
+                              game!metaboard.r.c)))
+           (get game!metaboard.0 (dec dims*)))
+      (and (iter out
+                 (for r from 0 below dims*)
+                 (iter (for c from 0 below dims*)
+                       (in out (always game!metaboard.r.c))))
+           'tie)))
 
 (def announce-winner (game)
   "Announce the winner of the game."
