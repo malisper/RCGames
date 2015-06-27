@@ -4,7 +4,8 @@
 
 (deftem (game (:conc-name nil))
   need  
-  players)
+  players
+  game-log)
 
 (deftem (player (:conc-name nil))
   socket)
@@ -12,13 +13,10 @@
 (deftem (human (:include player)))
 (deftem (ai (:include player)))
 
-(defparameter show-output* t
-  "If T, any output to any player will be printed to *standard-output*.")
-
 (def send (players &rest args)
   "Takes a single player or a list of players and uses format to print
    the string to all of them."
-  (each player (acheck (mklist players) [not show-output*] (cons *standard-output* it))
+  (each player (mklist players)
     (withs (socket (if (player-p player) player!socket player)
             stream (if (isa socket 'usocket) socket!socket-stream socket))
       (apply #'format stream args)
@@ -31,6 +29,14 @@
 (def send-hu (players &rest args)
   "Sends the message only to the human players in PLAYERS."
   (apply #'send (keep #'human-p (mklist players)) args))
+
+(def send-log (game control &rest args)
+  "Uses format with CONTROL and ARGS to store a string to the game
+   log."
+  (when show-output*
+    (format t "~?" control args))
+  (push (format nil "~?" control args) game!game-log)
+  t)
 
 (defgeneric start-game (game)
   (:documentation "Starts the actual game."))

@@ -5,6 +5,12 @@
 (define-condition game-error (simple-error) ())
 (define-condition invalid-move (game-error) ())
 
+(defparameter log-file* nil
+  "The file to log all of the game information to.")
+
+(defparameter show-output* nil
+  "If T, any data sent to the log will be printed to *standard-output*.")
+
 (defparameter sockets* '()
   "A list of all of the sockets we need to listen for. This includes
   all of the sockets that may disconnect.")
@@ -104,7 +110,13 @@
     (rem-cont socket)
     (rem-temp-cont socket)
     (socket-close socket))
-  (remhash game game->sockets*))
+  (remhash game game->sockets*)
+  (when log-file*
+    (w/file (*standard-output* log-file*
+             :direction :output
+             :if-exists :append
+             :if-does-not-exist :create)
+      (mapc #'pr (reverse game!game-log)))))
 
 (defcont add-player (game type) (listener)
   "Wait for all of the players to connect."

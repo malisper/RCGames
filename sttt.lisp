@@ -49,6 +49,7 @@
 (defmethod start-game ((game super-tic-tac-toe))
   (= game!current (car game!players))
   (= (temp-cont game!current!socket) (play-turn game))
+  (send-log game "STTT~%")
   (send-hu game!players "~A" game ())
   
   (send-hu game!current "It is your turn.~%")
@@ -67,12 +68,13 @@
   (declare (ignore socket))
   (mvb (orow ocol irow icol) (read-input game game!current orow ocol)
     (= game!board.orow.ocol.irow.icol (if (is game!current game!players!car) 'x 'o))
+    (send-log game "~A ~A ~A ~A~%" orow ocol irow icol)
     (send-hu game!players "~A" game ())
     (aif (winner game)
       (do (announce-winner game)
           (disconnect game))
       (do (= game!current (next game))
-          (send-ai game!current "~A ~A~%" irow icol)
+          (send-ai game!current "~A ~A ~A ~A~%" orow ocol irow icol)
           (send-hu game!current "Your turn.~%Your move on board ~A ~A.~%" irow icol)
           (= (temp-cont game!current!socket) (play-turn game irow icol))))))
 
@@ -123,9 +125,11 @@
   "Announce the winner of the game."
   (if (is (winner game) 'tie)
       (do (send-hu game!players "It was a tie.~%")
-          (send-ai game!players "0~%"))
+          (send-ai game!players "0~%")
+          (send-log game!players "0~%"))
       (do (send-hu game!players "~:[Player 2~;Player 1~] won!~%" (is (winner game) 'x))
-          (send-ai game!players "~:[1~;2~]~%" (is (winner game) 'o)))))
+          (send-ai game!players "~:[1~;2~]~%" (is (winner game) 'o))
+          (send-log game!players "~:[1~;2~]~%" (is (winner game) 'o)))))
 
 (def linearlize (arr)
   "Return a vector that has the same elements as an array."

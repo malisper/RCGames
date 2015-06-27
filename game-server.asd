@@ -10,4 +10,5 @@
                (:file "handlers" :depends-on ("package"))
                (:file "game" :depends-on ("handlers" "package"))
                (:file "server" :depends-on ("package" "continuations" "game"))
-               (:file "ttt" :depends-on ("package" "continuations" "game" "server"))))
+               (:file "ttt" :depends-on ("package" "continuations" "game" "server"))
+               (:file "sttt" :depends-on ("package" "continuations" "game" "server"))))

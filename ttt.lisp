@@ -34,6 +34,7 @@
   "Initialize the actual game."
   (= game!current (car game!players))
   (= (temp-cont game!current!socket) (play-turn game))
+  (send-log game "TTT~%")
   (send-hu game!players "~A" game ())
   
   (send-hu game!current "It is your turn.~%")
@@ -47,6 +48,7 @@
   (declare (ignore socket))
   (mvb (r c) (read-input game game!current)
     (= game!board.r.c (if (is game!current game!players!car) 'x 'o))
+    (send-log game "~A ~A~%" r c)
     (send-hu game!players "~A" game ())
     (aif (winner game)
       (do (announce-winner game)
