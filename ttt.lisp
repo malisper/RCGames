@@ -50,7 +50,7 @@
     (= game!board.r.c (if (is game!current game!players!car) 'x 'o))
     (send-log game "~A ~A~%" r c)
     (send-hu game!players "~A" game ())
-    (aif (winner game)
+    (if (winner game)
       (do (announce-winner game)
           (disconnect game))
       (do (= game!current (next game))
@@ -104,8 +104,8 @@
     (mvb (match strings) (scan-to-strings "^(\\d) (\\d)\\s*$" line)
       (unless match
         (error 'invalid-move
-               :format-control "'~A' is malformed input."
-               :format-arguments (list )))
+               :format-control "~S is malformed input."
+               :format-arguments (list (keep [isa _ 'standard-char] line))))
       (let (r c) (map #'parse-integer strings)
         (unless (<= 0 r (dec dims*))
           (error 'invalid-move

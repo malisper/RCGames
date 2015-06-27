@@ -86,8 +86,12 @@
                 (call it socket)
               (temp-cont socket)
                 (restart-case (call it socket)
-                  (restart-turn ()
+                  (restart-turn (&rest args)
                     :report "Restart the continuation for the socket."
+                    (when args
+                      (print args)
+                      (apply #'format socket!socket-stream args)
+                      (force-output socket!socket-stream))
                     (= (temp-cont socket) it))
                   (disconnect ()
                     :report "Disconnect the current game."

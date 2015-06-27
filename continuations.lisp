@@ -25,7 +25,7 @@
 
 (def (setf cont) (continuation socket)
   "Sets the continuation for the given socket."
-  (setf conts*.socket continuation))
+  (= conts*.socket continuation))
 
 (def temp-cont (socket)
   "Returns the temporary continuation for SOCKET. A continuation that
@@ -40,7 +40,7 @@
 (def (setf temp-cont) (continuation socket)
   "Sets the temporary continuation for a given socket. It will be
    removed as soon as it is returned by temp-cont."
-  (setf temp-conts*.socket continuation))
+  (= temp-conts*.socket continuation))
 
 (def rem-temp-cont (socket)
   "Removes the temporary continuation for the given socket."

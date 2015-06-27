@@ -161,8 +161,8 @@
           (mvb (match strings) (scan-to-strings "^(\\d) (\\d) (\\d) (\\d)\\s*$" line)
             (unless match
               (error 'invalid-move
-                     :format-control "'~A' is malformed input."
-                     :format-arguments (list )))
+                     :format-control "~S is malformed input."
+                     :format-arguments (list (keep [isa _ 'standard-char] line))))
             (let (orow ocol irow icol) (map #'parse-integer strings)
               (unless (<= 0 orow (dec dims*))
                 (error 'invalid-move
