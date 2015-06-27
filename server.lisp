@@ -89,7 +89,6 @@
                   (restart-turn (&rest args)
                     :report "Restart the continuation for the socket."
                     (when args
-                      (print args)
                       (apply #'format socket!socket-stream args)
                       (force-output socket!socket-stream))
                     (= (temp-cont socket) it))

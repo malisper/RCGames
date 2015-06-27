@@ -101,7 +101,7 @@
   "Read the input for a tic-tac-toe game"
   (declare (ignore args))
   (let line (read-line :from player!socket!socket-stream)
-    (mvb (match strings) (scan-to-strings "^(\\d) (\\d)\\s*$" line)
+    (mvb (match strings) (scan-to-strings "^(\\d*) (\\d*)\\s*$" line)
       (unless match
         (error 'invalid-move
                :format-control "~S is malformed input."

@@ -140,7 +140,7 @@
   (let (orow ocol) args
     (let line (read-line :from player!socket!socket-stream)
       (if (and orow (notevery #'idfn (linearlize game!board.orow.ocol)))
-          (mvb (match strings) (scan-to-strings "^(\\d) (\\d)\\s*$" line)
+          (mvb (match strings) (scan-to-strings "^(\\d*) (\\d)*\\s*$" line)
             (unless match
               (error 'invalid-move
                      :format-control "'~A' is malformed input."
@@ -158,7 +158,7 @@
                      (error 'invalid-move :format-control "The square is already taken."))
                    (values orow ocol irow icol))))
           ;; Code to run if we need to pick up the outer row and outer column.
-          (mvb (match strings) (scan-to-strings "^(\\d) (\\d) (\\d) (\\d)\\s*$" line)
+          (mvb (match strings) (scan-to-strings "^(\\d*) (\\d*) (\\d*) (\\d*)\\s*$" line)
             (unless match
               (error 'invalid-move
                      :format-control "~S is malformed input."
