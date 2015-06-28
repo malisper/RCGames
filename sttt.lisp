@@ -131,10 +131,6 @@
           (send-ai game!players "~:[1~;2~]~%" (is (winner game) 'o))
           (send-log game!players "~:[1~;2~]~%" (is (winner game) 'o)))))
 
-(def linearlize (arr)
-  "Return a vector that has the same elements as an array."
-  (make-array (array-total-size arr) :displaced-to arr))
-
 (defmethod read-input ((game super-tic-tac-toe) player &rest args)
   "Read the input for a tic-tac-toe game"
   (let (orow ocol) args
