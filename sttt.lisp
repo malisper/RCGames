@@ -116,9 +116,11 @@
                               game!metaboard.r.c)))
            (get game!metaboard.0 (dec dims*)))
       (and (iter out
-                 (for r from 0 below dims*)
-                 (iter (for c from 0 below dims*)
-                       (in out (always game!metaboard.r.c))))
+                 (for orow from 0 below dims*)
+                 (iter (for ocol from 0 below dims*)
+                       (iter (for irow from 0 below dims*)
+                             (iter (for icol from 0 below dims*)
+                                   (in out (always game!metaboard.orow.ocol.irow.icol))))))
            'tie)))
 
 (def announce-winner (game)
