@@ -17,8 +17,8 @@
   "Takes a single player or a list of players and uses format to print
    the string to all of them."
   (each player (mklist players)
-    (withs (socket (if (player-p player) player!socket player)
-            stream (if (isa socket 'usocket) socket!socket-stream socket))
+    (check-type player player)
+    (let stream player!socket!socket-stream
       (apply #'format stream args)
       (force-output stream))))
 
