@@ -34,7 +34,7 @@
   "Initialize the actual game."
   (= game!current (car game!players))
   (= (temp-cont game!current!socket) (play-turn game))
-  (send-log game "TTT~%")
+  (send-log game "TTT ~A~%" (len game!players))
   (send-hu game!players "~A" game ())
   
   (send-hu game!current "It is your turn.~%")

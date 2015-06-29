@@ -50,7 +50,7 @@
 (defmethod start-game ((game super-tic-tac-toe))
   (= game!current (car game!players))
   (= (temp-cont game!current!socket) (play-turn game))
-  (send-log game "STTT~%")
+  (send-log game "STTT ~A~%" (len game!players))
   (send-hu game!players "~A" game ())
   
   (send-hu game!current "It is your turn.~%")
