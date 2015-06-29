@@ -5,10 +5,10 @@
 (define-condition game-error (simple-error) ())
 (define-condition invalid-move (game-error) ())
 
-(defparameter log-file* nil
+(defparameter log-file* "/root/common-lisp/log.txt"
   "The file to log all of the game information to.")
 
-(defparameter show-output* nil
+(defparameter show-output* t
   "If T, any data sent to the log will be printed to *standard-output*.")
 
 (defparameter sockets* '()
@@ -31,8 +31,8 @@
    a port for humans to connect to, and a port for AI to connect to."
   (let game-sockets (mapeach (g h a) games
                       (list g
-                            (socket-listen *wildcard-host* h)
-                            (socket-listen *wildcard-host* a)))
+                            (socket-listen *wildcard-host* h :reuse-address t)
+                            (socket-listen *wildcard-host* a :reuse-address t)))
     (unwind-protect (do (each (game-type hs as) game-sockets
                           (push hs sockets*)
                           (push as sockets*)
@@ -98,6 +98,7 @@
     (rem-temp-cont socket)
     (socket-close socket))
   (remhash game game->sockets*)
+  (wipe game!players)
   (when log-file*
     (w/file (*standard-output* log-file*
              :direction :output
