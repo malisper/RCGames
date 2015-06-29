@@ -26,29 +26,29 @@
 (defparameter disconnected-code* -1 "The code for when a player disconnects.")
 (defparameter unknown-error-code* -2 "The code for when an unknown error occurs.")
 
-(def start-server (game-type hport aport &rest args)
-  "This version of start-server opens a single server which connects
-   every two to a game of ttt. There is no limit on the number of
-   players. Human players connect through HPORT and AI players connect
-   through APORT."
-  (with (hs (socket-listen *wildcard-host* hport :reuse-address t)
-         as (socket-listen *wildcard-host* aport :reuse-address t))
-    (unwind-protect (do (push hs sockets*)
-                        (push as sockets*)
-                        ;; Using a zero dimensional array as a pointer
-                        ;; so that both add-player closures always
-                        ;; refer to the same game.
-                        (let arr (make-array '())
-                          (= arr!aref (apply #'inst game-type args))
-                          (= (cont hs) (add-player arr 'human))
-                          (= (cont as) (add-player arr 'ai))
-                          (listening-loop)))
-      (socket-close hs)
-      (socket-close as)
-      (= sockets* (rem hs sockets*))
-      (= sockets* (rem as sockets*))
-      (rem-cont hs)
-      (rem-cont as)
+(def start-server (games)
+  "GAMES should be a list of triples. Each one containing a game-type,
+   a port for humans to connect to, and a port for AI to connect to."
+  (let game-sockets (mapeach (g h a) games
+                      (list g
+                            (socket-listen *wildcard-host* h)
+                            (socket-listen *wildcard-host* a)))
+    (unwind-protect (do (each (game-type hs as) game-sockets
+                          (push hs sockets*)
+                          (push as sockets*)
+                          ;; Using a zero dimensional array as a pointer
+                          ;; so that both add-player closures always
+                          ;; refer to the same game.
+                          (let arr (make-array '())
+                               (= arr!aref (inst game-type))
+                               (= (cont hs) (add-player arr 'human))
+                               (= (cont as) (add-player arr 'ai))))
+                        (listening-loop))
+      (each (_ . ss) game-sockets
+        (each s ss
+          (socket-close s)
+          (= sockets* (rem s sockets*))
+          (rem-cont s)))
       (each game (copy-list (keys game->sockets*))
         (send-hu game!players "An error occured~%.")
         (send-ai game!players "~A~%" unknown-error-code*)
