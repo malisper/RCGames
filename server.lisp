@@ -84,11 +84,9 @@
                     (disconnect socket->game*.socket)
                     (return)))
               :else
-                (restart-case (error "No continuation for socket ~A." socket)
-                  (ignore-input ()
-                    :report "Ignore all of the new information from the socket."
-                    (while (listen socket!socket-stream)
-                      (read-line :from socket!socket-stream)))))))))
+                ;; Just ignore the input.
+                (while (listen socket!socket-stream)
+                  (read-line :from socket!socket-stream)))))))
 
 (def disconnect (game)
   "Disconnect a game. Sends INFO to all of the human players and CODE
