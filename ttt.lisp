@@ -93,9 +93,11 @@
   "Announce the winner of the game."
   (if (is (winner game) 'tie)
       (do (send-hu game!players "It was a tie.~%")
-          (send-ai game!players "0~%"))
+          (send-ai game!players "0~%")
+          (send-log game "0~%"))
       (do (send-hu game!players "~:[Player 2~;Player 1~] won!~%" (is (winner game) 'x))
-          (send-ai game!players "~:[1~;2~]~%" (is (winner game) 'o)))))
+          (send-ai game!players "~:[1~;2~]~%" (is (winner game) 'o))
+          (send-log game "~:[1~;2~]~%" (is (winner game) 'o)))))
 
 (defmethod read-input ((game tic-tac-toe) player &rest args)
   "Read the input for a tic-tac-toe game"
