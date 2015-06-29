@@ -48,7 +48,7 @@
   (declare (ignore socket))
   (mvb (r c) (read-input game game!current)
     (= game!board.r.c (if (is game!current game!players!car) 'x 'o))
-    (send-log game "~A ~A~%" r c)
+    (send-log game "~A: ~A ~A~%" (inc+pos game!current game!players) r c)
     (send-hu game!players "~A" game ())
     (if (winner game)
       (do (announce-winner game)
