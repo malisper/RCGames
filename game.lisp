@@ -8,27 +8,17 @@
   game-log)
 
 (deftem (player (:conc-name nil))
-  socket)
+  socket flags)
 
-(deftem (human (:include player)))
-(deftem (ai (:include player)))
-
-(def send (players &rest args)
-  "Takes a single player or a list of players and uses format to print
-   the string to all of them."
-  (each player (mklist players)
+(def send (flags players &rest args)
+  "Takes a single player or a list of players, and a flag or list of
+   flags to print, and then uses format to print the strings to all of
+   players that one of the given flags set."
+  (each player (keep (mklist flags) (mklist players) :key #'flags :test #'intersection)
     (check-type player player)
     (let stream player!socket!socket-stream
       (apply #'format stream args)
       (force-output stream))))
-
-(def send-ai (players &rest args)
-  "Sends the message only to the ai players in PLAYERS."
-  (apply #'send (keep #'ai-p (mklist players)) args))
-
-(def send-hu (players &rest args)
-  "Sends the message only to the human players in PLAYERS."
-  (apply #'send (keep #'human-p (mklist players)) args))
 
 (def send-log (game control &rest args)
   "Uses format with CONTROL and ARGS to store a string to the game
@@ -42,15 +32,10 @@
   (:documentation "Starts the actual game."))
 
 (defgeneric read-input (game player &rest args)
-  (:documentation "Reads the input for the game."))
+  (:documentation "Reads the input for the game.")
+  (:method :around (game (player player) &rest args)
+    (declare (ignore args))
+    ;; When a player makes an illegal move we will disconnect them.
+    (handler-bind ((invalid-move #'disconnect-handler))
+      (call-next-method))))
 
-(defmethod read-input :around (game (player human) &rest args)
-  ;; We should give players multiple chances to enter correct input.
-  (handler-bind ((invalid-move #'restart-turn-handler))
-    (call-next-method)))
-
-(defmethod read-input :around (game (player ai) &rest args)
-  ;; We should give the ai a single chance before disconnecting them
-  ;; when they make an invalid move.
-  (handler-bind ((invalid-move #'disconnect-handler))
-    (call-next-method)))

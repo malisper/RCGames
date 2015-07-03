@@ -35,13 +35,13 @@
   (= game!current (car game!players))
   (= (temp-cont game!current!socket) (play-turn game))
   (send-log game "TTT ~A~%" (len game!players))
-  (send-hu game!players "~A" game ())
+  (send :hu game!players "~A" game ())
   
-  (send-hu game!current "It is your turn.~%")
-  (send-hu game!next    "It is your opponents turn.~%")
+  (send :hu game!current "It is your turn.~%")
+  (send :hu game!next    "It is your opponents turn.~%")
   
-  (send-ai game!current "1~%")
-  (send-ai game!next    "2~%"))
+  (send :ai game!current "1~%")
+  (send :ai game!next    "2~%"))
 
 (defcont play-turn (game) (socket)
   "Performs a turn for the current player."
@@ -49,14 +49,14 @@
   (mvb (r c) (read-input game game!current)
     (= game!board.r.c (if (is game!current game!players!car) 'x 'o))
     (send-log game "~A: ~A ~A~%" (inc+pos game!current game!players) r c)
-    (send-hu game!players "~A" game ())
+    (send :hu game!players "~A" game ())
     (if (winner game)
       (do (announce-winner game)
           (disconnect game))
       (do (= game!current (next game))
           ;; Tells the AI the game is still going on.
-          (send-ai game!current "~A ~A~%" r c)
-          (send-hu game!current "Your turn.~%" ())
+          (send :ai game!current "~A ~A~%" r c)
+          (send :hu game!current "Your turn.~%" ())
           (= (temp-cont game!current!socket) (play-turn game))))))
 
 (def next (game)
@@ -92,11 +92,11 @@
 (def announce-winner (game)
   "Announce the winner of the game."
   (if (is (winner game) 'tie)
-      (do (send-hu game!players "It was a tie.~%")
-          (send-ai game!players "0~%")
+      (do (send :hu game!players "It was a tie.~%")
+          (send :ai game!players "0~%")
           (send-log game "0~%"))
-      (do (send-hu game!players "~:[Player 2~;Player 1~] won!~%" (is (winner game) 'x))
-          (send-ai game!players "~:[1~;2~]~%" (is (winner game) 'o))
+      (do (send :hu game!players "~:[Player 2~;Player 1~] won!~%" (is (winner game) 'x))
+          (send :ai game!players "~:[1~;2~]~%" (is (winner game) 'o))
           (send-log game "~:[1~;2~]~%" (is (winner game) 'o)))))
 
 (defmethod read-input ((game tic-tac-toe) player &rest args)

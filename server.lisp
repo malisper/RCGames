@@ -5,7 +5,7 @@
 (define-condition game-error (simple-error) ())
 (define-condition invalid-move (game-error) ())
 
-(defparameter log-file* "/root/common-lisp/log.txt"
+(defparameter log-file* nil
   "The file to log all of the game information to.")
 
 (defparameter show-output* t
@@ -41,8 +41,8 @@
                           ;; refer to the same game.
                           (let arr (make-array '())
                                (= arr!aref (inst game-type))
-                               (= (cont hs) (add-player arr 'human))
-                               (= (cont as) (add-player arr 'ai))))
+                               (= (cont hs) (add-player arr :hu))
+                               (= (cont as) (add-player arr :ai))))
                         (listening-loop))
       (each (_ . ss) game-sockets
         (each s ss
@@ -50,8 +50,8 @@
           (= sockets* (rem s sockets*))
           (rem-cont s)))
       (each game (copy-list (keys game->sockets*))
-        (send-hu game!players "An error occured~%.")
-        (send-ai game!players "~A~%" unknown-error-code*)
+        (send :hu game!players "An error occured~%.")
+        (send :ai game!players "~A~%" unknown-error-code*)
         (disconnect game)))))
 
 (def listening-loop ()
@@ -61,8 +61,8 @@
       (each socket sockets
         (aif2 (and (~isa socket 'stream-server-usocket)
                    (is socket (peek-char nil (socket-stream socket) nil socket)))
-                (do (send-hu socket->game*.socket!players "Some player quit.~%")
-                    (send-ai socket->game*.socket!players "~A~%" disconnected-code*)
+                (do (send :hu socket->game*.socket!players "Some player quit.~%")
+                    (send :ai socket->game*.socket!players "~A~%" disconnected-code*)
                     (disconnect socket->game*.socket)
                     ;; We need to go through the loop again since we may
                     ;; have disconnected some of the other ready sockets.
@@ -79,8 +79,8 @@
                     (= (temp-cont socket) it))
                   (disconnect ()
                     :report "Disconnect the current game."
-                    (send-hu socket->game*.socket!players "An unknown error occured.~%")
-                    (send-ai socket->game*.socket!players "~A~%" unknown-error-code*)
+                    (send :hu socket->game*.socket!players "An unknown error occured.~%")
+                    (send :ai socket->game*.socket!players "~A~%" unknown-error-code*)
                     (disconnect socket->game*.socket)
                     (return)))
               :else
@@ -106,10 +106,10 @@
              :if-does-not-exist :create)
       (mapc #'pr (reverse game!game-log)))))
 
-(defcont add-player (arr type) (listener)
+(defcont add-player (arr flags) (listener)
   "Wait for all of the players to connect."
   (withs (socket (socket-accept listener)
-          player (inst type :socket socket)
+          player (inst 'player :socket socket :flags (mklist flags))
           game arr!aref)
     (push socket game->sockets*.game)
     (push socket sockets*)

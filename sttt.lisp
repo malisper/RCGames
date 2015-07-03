@@ -51,13 +51,13 @@
   (= game!current (car game!players))
   (= (temp-cont game!current!socket) (play-turn game))
   (send-log game "STTT ~A~%" (len game!players))
-  (send-hu game!players "~A" game ())
+  (send :hu game!players "~A" game ())
   
-  (send-hu game!current "It is your turn.~%")
-  (send-hu game!next    "It is your opponent's turn.~%")
+  (send :hu game!current "It is your turn.~%")
+  (send :hu game!next    "It is your opponent's turn.~%")
 
-  (send-ai game!current "1~%")
-  (send-ai game!next    "2~%"))
+  (send :ai game!current "1~%")
+  (send :ai game!next    "2~%"))
 
 (def next (game)
   "Returns the next player in the game."
@@ -70,13 +70,13 @@
   (mvb (orow ocol irow icol) (read-input game game!current orow ocol)
     (= game!board.orow.ocol.irow.icol (if (is game!current game!players!car) 'x 'o))
     (send-log game "~A:~A ~A ~A ~A~%" (inc+pos game!current game!players) orow ocol irow icol)
-    (send-hu game!players "~A" game ())
+    (send :hu game!players "~A" game ())
     (if (winner game)
       (do (announce-winner game)
           (disconnect game))
       (do (= game!current (next game))
-          (send-ai game!current "~A ~A ~A ~A~%" orow ocol irow icol)
-          (send-hu game!current "Your turn.~%Your move on board ~A ~A.~%" irow icol)
+          (send :ai game!current "~A ~A ~A ~A~%" orow ocol irow icol)
+          (send :hu game!current "Your turn.~%Your move on board ~A ~A.~%" irow icol)
           (= (temp-cont game!current!socket) (play-turn game irow icol))))))
 
 (def cell-winner (board)
@@ -126,11 +126,11 @@
 (def announce-winner (game)
   "Announce the winner of the game."
   (if (is (winner game) 'tie)
-      (do (send-hu game!players "It was a tie.~%")
-          (send-ai game!players "0~%")
+      (do (send :hu game!players "It was a tie.~%")
+          (send :ai game!players "0~%")
           (send-log game!players "0~%"))
-      (do (send-hu game!players "~:[Player 2~;Player 1~] won!~%" (is (winner game) 'x))
-          (send-ai game!players "~:[1~;2~]~%" (is (winner game) 'o))
+      (do (send :hu game!players "~:[Player 2~;Player 1~] won!~%" (is (winner game) 'x))
+          (send :ai game!players "~:[1~;2~]~%" (is (winner game) 'o))
           (send-log game!players "~:[1~;2~]~%" (is (winner game) 'o)))))
 
 (defmethod read-input ((game super-tic-tac-toe) player &rest args)
@@ -152,9 +152,9 @@
                        (error 'invalid-move
                               :format-control "The inner column index ~A is illegal."
                               :format-arguments (list icol)))
-                   (when game!board.orow.ocol.irow.icol
-                     (error 'invalid-move :format-control "The square is already taken."))
-                   (values orow ocol irow icol))))
+                     (when game!board.orow.ocol.irow.icol
+                       (error 'invalid-move :format-control "The square is already taken."))
+                     (values orow ocol irow icol))))
           ;; Code to run if we need to pick up the outer row and outer column.
           (mvb (match strings) (scan-to-strings "^(\\d*) (\\d*) (\\d*) (\\d*)\\s*$" line)
             (unless match
