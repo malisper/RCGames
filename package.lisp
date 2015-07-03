@@ -6,5 +6,5 @@
   (:export :start-game :read-input :defcont :cont :rem-cont
            :temp-cont :rem-temp-cont :start-server
            :game :player :ai :human :need :players
-           :send :send-hu :send-ai :send-log :disconnect
+           :send :send-log :disconnect
            :socket :game-error :invalid-move))
