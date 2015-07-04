@@ -21,7 +21,7 @@
   "Takes a single player or a list of players, and a flag or list of
    flags to print, and then uses format to print the strings to all of
    players that one of the given flags set."
-  (each player (if (keep (mklist flags) (mklist players) :key #'flags :test #'intersection))
+  (each player (keep (mklist flags) (mklist players) :key #'flags :test #'intersection)
     (check-type player player)
     (let stream player!socket!socket-stream
       (apply #'format stream args)
