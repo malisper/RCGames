@@ -17,7 +17,8 @@
 (deftem (tic-tac-toe (:conc-name nil) (:include game))
   (need 2)
   current
-  (board (make-array (list dims* dims*) :initial-element nil)))
+  (board (make-array (list dims* dims*) :initial-element nil))
+  (flags '(:hu :ai)))
 
 (defmethod print-object ((game tic-tac-toe) stream)
   (let *standard-output* stream

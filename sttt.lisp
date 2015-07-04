@@ -18,7 +18,8 @@
   (need 2)
   current
   (board (make-array (n-of 4 dims*) :initial-element nil))
-  (metaboard (make-array (n-of 2 dims*) :initial-element nil)))
+  (metaboard (make-array (n-of 2 dims*) :initial-element nil))
+  (flags '(:hu :ai)))
 
 (defmethod print-object ((game super-tic-tac-toe) stream)
   (let *standard-output* stream
