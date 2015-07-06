@@ -15,6 +15,9 @@
   "A list of all of the sockets we need to listen for. This includes
   all of the sockets that may disconnect.")
 
+(defparameter misc-sockets* '()
+  "These are sockets that aren't attached to any game yet.")
+
 (defparameter socket->game* (table)
   "A table mapping each socket to the game it is associated with. This
    is in case a player close all of the other sockets.")
@@ -23,35 +26,37 @@
   "A table mapping from a game to all of the sockets we need to
    disconnect if a player disconnects.")
 
+(defparameter game* nil
+  "The current game being played. This is used as a dynamic variable
+   so that any function can determine what the current game is.")
+
 (defparameter disconnected-code* -1 "The code for when a player disconnects.")
 (defparameter unknown-error-code* -2 "The code for when an unknown error occurs.")
+(defparameter invalid-flag-code*  -3 "The code for when a player enters an illegal flag.")
 
 (def start-server (games)
-  "GAMES should be a list of triples. Each one containing a game-type,
-   a port for humans to connect to, and a port for AI to connect to."
-  (let game-sockets (mapeach (g h a) games
-                      (list g
-                            (socket-listen *wildcard-host* h :reuse-address t)
-                            (socket-listen *wildcard-host* a :reuse-address t)))
-    (unwind-protect (do (each (game-type hs as) game-sockets
-                          (push hs sockets*)
-                          (push as sockets*)
+  "GAMES should be a list of duples Each one containing a game-type,
+   and a port for players to connect to."
+  (let game-sockets (mapeach (g p) games
+                      (let socket (socket-listen *wildcard-host* p :reuse-address t)
+                        (push socket misc-sockets*)
+                        (list g socket)))
+    (unwind-protect (do (each (game-type socket) game-sockets
+                          (push socket sockets*)
                           ;; Using a zero dimensional array as a pointer
                           ;; so that both add-player closures always
                           ;; refer to the same game.
                           (let arr (make-array '())
-                               (= arr!aref (inst game-type))
-                               (= (cont hs) (add-player arr :hu))
-                               (= (cont as) (add-player arr :ai))))
+                            (= arr!aref (inst game-type))
+                            (= (cont socket) (add-player arr))))
                         (listening-loop))
-      (each (_ . ss) game-sockets
-        (each s ss
-          (socket-close s)
-          (= sockets* (rem s sockets*))
-          (rem-cont s)))
+      (each socket misc-sockets*
+        (socket-close socket)
+        (= sockets* (rem socket sockets*))
+        (rem-cont socket)
+        (= misc-sockets* '()))
       (each game (copy-list (keys game->sockets*))
-        (send :hu game!players "An error occured~%.")
-        (send :ai game!players "~A~%" unknown-error-code*)
+        (send :all game!players "~A~%" unknown-error-code*)
         (disconnect game)))))
 
 (def listening-loop ()
@@ -61,8 +66,7 @@
       (each socket sockets
         (aif2 (and (~isa socket 'stream-server-usocket)
                    (is socket (peek-char nil (socket-stream socket) nil socket)))
-                (do (send :hu socket->game*.socket!players "Some player quit.~%")
-                    (send :ai socket->game*.socket!players "~A~%" disconnected-code*)
+                (do (send :all socket->game*.socket!players "~A~%" disconnected-code*)
                     (disconnect socket->game*.socket)
                     ;; We need to go through the loop again since we may
                     ;; have disconnected some of the other ready sockets.
@@ -70,25 +74,25 @@
               (cont socket)
                 (call it socket)
               (temp-cont socket)
-                (restart-case (call it socket)
-                  (restart-turn (&rest args)
-                    :report "Restart the continuation for the socket."
-                    (when args
-                      (apply #'format socket!socket-stream args)
-                      (force-output socket!socket-stream))
-                    (= (temp-cont socket) it))
-                  (disconnect ()
-                    :report "Disconnect the current game."
-                    (send :hu socket->game*.socket!players "An unknown error occured.~%")
-                    (send :ai socket->game*.socket!players "~A~%" unknown-error-code*)
-                    (disconnect socket->game*.socket)
-                    (return)))
+                (let game* socket->game*.socket
+                  (restart-case (call it socket)
+                    (restart-turn (&rest args)
+                      :report "Restart the continuation for the socket."
+                      (when args
+                        (apply #'format socket!socket-stream args)
+                        (force-output socket!socket-stream))
+                      (= (temp-cont socket) it))
+                    (disconnect ()
+                      :report "Disconnect the current game."
+                      (send :all socket->game*.socket!players "~A~%" unknown-error-code*)
+                      (disconnect)
+                      (return))))
               :else
                 ;; Just ignore the input.
                 (while (listen socket!socket-stream)
                   (read-line :from socket!socket-stream)))))))
 
-(def disconnect (game)
+(def disconnect (? (game game*))
   "Disconnect a game. Sends INFO to all of the human players and CODE
    to all of the AI players."
   (zap #'set-difference sockets* game->sockets*.game)
@@ -106,18 +110,37 @@
              :if-does-not-exist :create)
       (mapc #'pr (reverse game!game-log)))))
 
-(defcont add-player (arr flags) (listener)
-  "Wait for all of the players to connect."
-  (withs (socket (socket-accept listener)
-          player (inst 'player :socket socket :flags (mklist flags))
-          game arr!aref)
-    (push socket game->sockets*.game)
+(defcont add-player (arr) (listener)
+  "Connect a given player."
+  (let socket (socket-accept listener)
+    (= (temp-cont socket) (read-flags arr))
     (push socket sockets*)
-    (= socket->game*.socket game)
-    (push player game!players)
-    (when (is game!players!len game!need)
-      (start-game game)
-      ;; Have the continuation add players to a new game instead of
-      ;; the current one. It is safe to use type-of as it will always
-      ;; return the class-name of a class with a proper name.
-      (= arr!aref (inst (type-of game))))))
+    (push socket misc-sockets*)))
+
+(defcont read-flags (arr) (socket)
+  "Reads the flags from the player."
+  (withs (game arr!aref
+          flags (parse-flags arr!aref socket))
+    (if (is flags :invalid)
+        (format socket!socket-stream "~A~%" invalid-flag-code*)
+        (let player (inst 'player :socket socket :flags flags)
+          (push socket game->sockets*.game)
+          (= socket->game*.socket game)
+          (= misc-sockets* (rem socket misc-sockets*))
+          (push player game!players)
+          (when (is game!players!len game!need)
+            ;; Have the continuation add players to a new game instead of
+            ;; the current one. It is safe to use type-of as it will always
+            ;; return the class-name of a class with a proper name.
+            (= arr!aref (inst (type-of game)))
+            (let game* game
+              (start-game game)))))))
+
+(def parse-flags (game socket)
+  "Returns the flags the socket wants to use. If they aren't valid
+   returns :INVALID."
+  (ado (read-line :from socket!socket-stream)
+       (tokens it)
+       (check it
+              [subsetp _ game!flags]
+              :invalid)))

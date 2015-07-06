@@ -5,6 +5,6 @@
      :until :in :coerce :with :summing :defmethod)
   (:export :start-game :read-input :defcont :cont :rem-cont
            :temp-cont :rem-temp-cont :start-server
-           :game :player :ai :human :need :players :flags
+           :game :player :game* :need :players :flags
            :send :send-log :disconnect
            :socket :game-error :invalid-move))

@@ -14,11 +14,12 @@
 
 (defparameter dims* 3 "The side length of the tic-tac-toe board.")
 
+;; We only support one way of input and output so there are now
+;; additional flags added..
 (deftem (tic-tac-toe (:conc-name nil) (:include game))
   (need 2)
   current
-  (board (make-array (list dims* dims*) :initial-element nil))
-  (flags '(:hu :ai)))
+  (board (make-array (list dims* dims*) :initial-element nil)))
 
 (defmethod print-object ((game tic-tac-toe) stream)
   (let *standard-output* stream
@@ -34,31 +35,25 @@
 (defmethod start-game ((game tic-tac-toe))
   "Initialize the actual game."
   (= game!current (car game!players))
-  (= (temp-cont game!current!socket) (play-turn game))
-  (send-log game "TTT ~A~%" (len game!players))
-  (send :hu game!players "~A" game ())
-  
-  (send :hu game!current "It is your turn.~%")
-  (send :hu game!next    "It is your opponents turn.~%")
-  
-  (send :ai game!current "1~%")
-  (send :ai game!next    "2~%"))
+  (= (temp-cont game!current!socket) (play-turn))
+  (send :log nil "TTT ~A~%" (len game!players))
+  (send :all game!current "1~%")
+  (send :all game!next    "2~%"))
 
-(defcont play-turn (game) (socket)
+(defcont play-turn () (socket)
   "Performs a turn for the current player."
   (declare (ignore socket))
-  (mvb (r c) (read-input game game!current)
-    (= game!board.r.c (if (is game!current game!players!car) 'x 'o))
-    (send-log game "~A: ~A ~A~%" (inc+pos game!current game!players) r c)
-    (send :hu game!players "~A" game ())
-    (if (winner game)
-      (do (announce-winner game)
-          (disconnect game))
-      (do (= game!current (next game))
-          ;; Tells the AI the game is still going on.
-          (send :ai game!current "~A ~A~%" r c)
-          (send :hu game!current "Your turn.~%" ())
-          (= (temp-cont game!current!socket) (play-turn game))))))
+  (mvb (r c) (read-input game* game*!current)
+    (= game*!board.r.c (if (is game*!current game*!players!car) 'x 'o))
+    (send :log nil "~A: ~A ~A~%" (inc+pos game*!current game*!players) r c)
+    (send :all game*!next "~A ~A~%" r c)
+    (if (winner game*)
+      (do (announce-winner)
+          (disconnect))
+      (do (= game*!current (next game*))
+          ;; Tells the AI the game* is still going on.
+          (send :ai game*!current "~A ~A~%" r c)
+          (= (temp-cont game*!current!socket) (play-turn))))))
 
 (def next (game)
   "Returns the next player in the game."
@@ -90,20 +85,17 @@
                        (in out (always game!board.r.c))))
            'tie)))
 
-(def announce-winner (game)
-  "Announce the winner of the game."
-  (if (is (winner game) 'tie)
-      (do (send :hu game!players "It was a tie.~%")
-          (send :ai game!players "0~%")
-          (send-log game "0~%"))
-      (do (send :hu game!players "~:[Player 2~;Player 1~] won!~%" (is (winner game) 'x))
-          (send :ai game!players "~:[1~;2~]~%" (is (winner game) 'o))
-          (send-log game "~:[1~;2~]~%" (is (winner game) 'o)))))
+(def announce-winner ()
+  "Announce the winner of the game*."
+  (if (is (winner game*) 'tie)
+      (send '(:all :log) "0~%")
+      (send '(:all :log) game*!players "~:[1~;2~]~%" (is (winner game*) 'o))))
 
-(defmethod read-input ((game tic-tac-toe) player &rest args)
+(defmethod read-input ((game tic-tac-toe) flag &rest args)
   "Read the input for a tic-tac-toe game"
-  (declare (ignore args))
-  (let line (read-line :from player!socket!socket-stream)
+  (declare (ignore flag args))
+  (withs (player game!current
+          line (read-line :from player!socket!socket-stream))
     (mvb (match strings) (scan-to-strings "^(\\d*) (\\d*)\\s*$" line)
       (unless match
         (error 'invalid-move

@@ -11,36 +11,30 @@
 (deftem (player (:conc-name nil))
   socket flags)
 
-(defmethod initialize-instance :after ((game game) &key)
-  (push :all game!flags))
-
-(defmethod :initialize-instance :after ((player player) &key)
-  (push :all player!flags))
-
 (def send (flags players &rest args)
   "Takes a single player or a list of players, and a flag or list of
    flags to print, and then uses format to print the strings to all of
    players that one of the given flags set."
-  (each player (keep (mklist flags) (mklist players) :key #'flags :test #'intersection)
+  (zap #'mklist flags)
+  (zap #'mklist players)
+  (each player (if (mem :all flags)
+                   players
+                   (keep flags players :key #'flags :test #'intersection))
     (check-type player player)
     (let stream player!socket!socket-stream
       (apply #'format stream args)
-      (force-output stream))))
-
-(def send-log (game control &rest args)
-  "Uses format with CONTROL and ARGS to store a string to the game
-   log."
-  (when show-output*
-    (format t "~?" control args))
-  (push (format nil "~?" control args) game!game-log)
-  t)
+      (force-output stream)))
+  (when (mem :log flags)
+    (when show-output*
+      (apply #'prf args))
+    (push (apply #'format nil args) game*!game-log)))
 
 (defgeneric start-game (game)
   (:documentation "Starts the actual game."))
 
-(defgeneric read-input (game player &rest args)
+(defgeneric read-input (game flag &rest args)
   (:documentation "Reads the input for the game.")
-  (:method :around (game (player player) &rest args)
+  (:method :around (game flag &rest args)
     (declare (ignore args))
     ;; When a player makes an illegal move we will disconnect them.
     (handler-bind ((invalid-move #'disconnect-handler))
