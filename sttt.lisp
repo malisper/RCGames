@@ -49,7 +49,7 @@
 
 (defmethod start-game ((game super-tic-tac-toe))
   (= game!current (car game!players))
-  (= (temp-cont game!current!socket) (play-turn))
+  (set-cont game!current!socket (play-turn))
   (send :log game "STTT ~A~%" (len game!players))
   (send :all game!current "1~%")
   (send :all game!next    "2~%"))
@@ -60,8 +60,7 @@
     it
     (car game!players)))
 
-(defcont play-turn (? orow ocol) (socket)
-  (declare (ignore socket))
+(defcont play-turn (? orow ocol)
   (mvb (orow ocol irow icol) (read-input game* nil orow ocol)
     (= game*!board.orow.ocol.irow.icol (if (is game*!current game*!players!car) 'x 'o))
     (send :log nil "~A: ~A ~A ~A ~A~%" (inc+pos game*!current game*!players) orow ocol irow icol)
@@ -69,9 +68,8 @@
       (do (announce-winner)
           (disconnect))
       (do (= game*!current game*!next)
-          (send :ai game*!current "~A ~A ~A ~A~%" orow ocol irow icol)
-          (send :hu game*!current "Your turn.~%Your move on board ~A ~A.~%" irow icol)
-          (= (temp-cont game*!current!socket) (play-turn irow icol))))))
+          (send :all game*!current "~A ~A ~A ~A~%" orow ocol irow icol)
+          (set-cont game*!current!socket (play-turn irow icol))))))
 
 (def cell-winner (board)
   "Is there a winner for an individual cell."

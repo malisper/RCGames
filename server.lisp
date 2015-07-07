@@ -2,9 +2,6 @@
 (in-package :server)
 (syntax:use-syntax :clamp)
 
-(define-condition game-error (simple-error) ())
-(define-condition invalid-move (game-error) ())
-
 (defparameter log-file* nil
   "The file to log all of the game information to.")
 
@@ -48,7 +45,7 @@
                           ;; refer to the same game.
                           (let arr (make-array '())
                             (= arr!aref (inst game-type))
-                            (= (cont socket) (add-player arr))))
+                            (set-cont socket (add-player arr))))
                         (listening-loop))
       (each socket misc-sockets*
         (socket-close socket)
@@ -66,31 +63,18 @@
       (each socket sockets
         (aif2 (and (~isa socket 'stream-server-usocket)
                    (is socket (peek-char nil (socket-stream socket) nil socket)))
-                (do (send :all socket->game*.socket!players "~A~%" disconnected-code*)
-                    (disconnect socket->game*.socket)
-                    ;; We need to go through the loop again since we may
-                    ;; have disconnected some of the other ready sockets.
-                    (return))
-              (cont socket)
-                (call it socket)
-              (temp-cont socket)
-                (let game* socket->game*.socket
-                  (restart-case (call it socket)
-                    (restart-turn (&rest args)
-                      :report "Restart the continuation for the socket."
-                      (when args
-                        (apply #'format socket!socket-stream args)
-                        (force-output socket!socket-stream))
-                      (= (temp-cont socket) it))
-                    (disconnect ()
-                      :report "Disconnect the current game."
-                      (send :all socket->game*.socket!players "~A~%" unknown-error-code*)
-                      (disconnect)
-                      (return))))
-              :else
-                ;; Just ignore the input.
-                (while (listen socket!socket-stream)
-                  (read-line :from socket!socket-stream)))))))
+              (do (send :all socket->game*.socket!players "~A~%" disconnected-code*)
+                  (disconnect socket->game*.socket)
+                  ;; We need to go through the loop again since we may
+                  ;; have disconnected some of the other ready sockets.
+                  (return))
+              (with (socket* socket game* socket->game*.socket)
+                (restart-case (call-cont socket)
+                  (disconnect ()
+                    :report "Disconnect the current game."
+                    (send :all socket->game*.socket!players "~A~%" unknown-error-code*)
+                    (disconnect)
+                    (return)))))))))
 
 (def disconnect (? (game game*))
   "Disconnect a game. Sends INFO to all of the human players and CODE
@@ -99,7 +83,6 @@
   (each socket game->sockets*.game
     (remhash socket socket->game*)
     (rem-cont socket)
-    (rem-temp-cont socket)
     (socket-close socket))
   (remhash game game->sockets*)
   (wipe game!players)
@@ -110,23 +93,25 @@
              :if-does-not-exist :create)
       (mapc #'pr (reverse game!game-log)))))
 
-(defcont add-player (arr) (listener)
+(defcont add-player (arr)
   "Connect a given player."
-  (let socket (socket-accept listener)
-    (= (temp-cont socket) (read-flags arr))
+  (let socket (socket-accept socket*)
+    (set-cont socket (read-flags arr))
     (push socket sockets*)
     (push socket misc-sockets*)))
 
-(defcont read-flags (arr) (socket)
+(defcont read-flags (arr)
   "Reads the flags from the player."
   (withs (game arr!aref
-          flags (parse-flags arr!aref socket))
+          flags (parse-flags))
     (if (is flags :invalid)
-        (format socket!socket-stream "~A~%" invalid-flag-code*)
-        (let player (inst 'player :socket socket :flags flags)
-          (push socket game->sockets*.game)
-          (= socket->game*.socket game)
-          (= misc-sockets* (rem socket misc-sockets*))
+        (do (format socket*!socket-stream "~A~%" invalid-flag-code*)
+            (force-output socket*!socket-stream)
+            (set-cont socket* (read-flags arr)))
+        (let player (inst 'player :socket socket* :flags flags)
+          (push socket* game->sockets*.game)
+          (= socket->game*.socket* game)
+          (= misc-sockets* (rem socket* misc-sockets*))
           (push player game!players)
           (when (is game!players!len game!need)
             ;; Have the continuation add players to a new game instead of
@@ -136,11 +121,11 @@
             (let game* game
               (start-game game)))))))
 
-(def parse-flags (game socket)
+(def parse-flags ()
   "Returns the flags the socket wants to use. If they aren't valid
    returns :INVALID."
-  (ado (read-line :from socket!socket-stream)
+  (ado (read-line :from socket*!socket-stream)
        (tokens it)
        (check it
-              [subsetp _ game!flags]
+              [subsetp _ socket->game*!flags]
               :invalid)))

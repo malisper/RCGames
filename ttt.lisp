@@ -35,31 +35,28 @@
 (defmethod start-game ((game tic-tac-toe))
   "Initialize the actual game."
   (= game!current (car game!players))
-  (= (temp-cont game!current!socket) (play-turn))
+  (set-cont socket* (play-turn))
   (send :log nil "TTT ~A~%" (len game!players))
   (send :all game!current "1~%")
-  (send :all game!next    "2~%"))
+  (send :all (next)    "2~%"))
 
-(defcont play-turn () (socket)
+(defcont play-turn ()
   "Performs a turn for the current player."
-  (declare (ignore socket))
   (mvb (r c) (read-input game* game*!current)
     (= game*!board.r.c (if (is game*!current game*!players!car) 'x 'o))
     (send :log nil "~A: ~A ~A~%" (inc+pos game*!current game*!players) r c)
-    (send :all game*!next "~A ~A~%" r c)
+    (send :all (next) "~A ~A~%" r c)
     (if (winner game*)
       (do (announce-winner)
           (disconnect))
-      (do (= game*!current (next game*))
-          ;; Tells the AI the game* is still going on.
-          (send :ai game*!current "~A ~A~%" r c)
-          (= (temp-cont game*!current!socket) (play-turn))))))
+      (do (= game*!current (next))
+          (set-cont game*!current!socket (play-turn))))))
 
-(def next (game)
+(def next ()
   "Returns the next player in the game."
-  (aif (cadr+mem game!current game!players)
+  (aif (cadr+mem game*!current game*!players)
     it
-    (car game!players)))
+    (car game*!players)))
 
 (def winner (game)
   "Is there a winner of this game? If so return the piece of that player."

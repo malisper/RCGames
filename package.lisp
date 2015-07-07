@@ -4,7 +4,7 @@
      :repeat :def :fn :defmemo :mac :while
      :until :in :coerce :with :summing :defmethod)
   (:export :start-game :read-input :defcont :cont :rem-cont
-           :temp-cont :rem-temp-cont :start-server
+           :start-server :set-cont :socket*
            :game :player :game* :need :players :flags
            :send :send-log :disconnect
            :socket :game-error :invalid-move))
