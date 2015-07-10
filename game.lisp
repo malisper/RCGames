@@ -6,10 +6,11 @@
   need  
   players
   game-log
-  flags)
+  flags
+  input-flags)
 
 (deftem (player (:conc-name nil))
-  socket flags)
+  socket flags input-flags)
 
 (def send (flags players &rest args)
   "Takes a single player or a list of players, and a flag or list of
@@ -34,7 +35,9 @@
 
 (defgeneric read-input (game flag &rest args)
   (:documentation "Reads the input for the game.")
-  (:method :around (game flag &rest args)
+  (:method (game (player player) &rest args)
+    (apply #'read-input game (input-flags player) args))
+  (:method :around (game (flag symbol) &rest args)
     (declare (ignore args))
     ;; When a player makes an illegal move we will disconnect them.
     (handler-bind ((invalid-move #'disconnect-handler))

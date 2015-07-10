@@ -46,7 +46,7 @@
     (= game*!board.r.c (if (is game*!current game*!players!car) 'x 'o))
     (send :log nil "~A: ~A ~A~%" (inc+pos game*!current game*!players) r c)
     (send :all (next) "~A ~A~%" r c)
-    (if (winner game*)
+    (if (winner)
       (do (announce-winner)
           (disconnect))
       (do (= game*!current (next))
@@ -58,35 +58,35 @@
     it
     (car game*!players)))
 
-(def winner (game)
-  "Is there a winner of this game? If so return the piece of that player."
-  ;; By using and in the way below, thereturn value will be the
+(def winner ()
+  "Is there a winner of this game*? If so return the piece of that player."
+  ;; By using 'and' in the way below, the return value will be the
   ;; winning player.
   (or (iter (for r from 0 below dims*)
             (thereis (iter (for c from 0 below dims*)
-                           (always (and (is game!board.r.c game!board.r.0) game!board.r.0)))))
+                           (always (and (is game*!board.r.c game*!board.r.0) game*!board.r.0)))))
       (iter (for c from 0 below dims*)
             (thereis (iter (for r from 0 below dims*)
-                           (always (and (is game!board.r.c game!board.0.c) game!board.0.c)))))
+                           (always (and (is game*!board.r.c game*!board.0.c) game*!board.0.c)))))
       (and (iter (for i from 0 below dims*)
-                 (always (and (is game!board.i.i game!board.0.0))))
-           game!board.0.0)
+                 (always (and (is game*!board.i.i game*!board.0.0))))
+           game*!board.0.0)
       (and (iter (for r from 0 below dims*)
                  (for c from (dec dims*) downto 0)
-                 (always (and (is game!board.r.c (get game!board.0 (dec dims*)))
-                              game!board.r.c)))
-           (get game!board.0 (dec dims*)))
+                 (always (and (is game*!board.r.c (get game*!board.0 (dec dims*)))
+                              game*!board.r.c)))
+           (get game*!board.0 (dec dims*)))
       (and (iter out
                  (for r from 0 below dims*)
                  (iter (for c from 0 below dims*)
-                       (in out (always game!board.r.c))))
+                       (in out (always game*!board.r.c))))
            'tie)))
 
 (def announce-winner ()
   "Announce the winner of the game*."
-  (if (is (winner game*) 'tie)
+  (if (is (winner) 'tie)
       (send '(:all :log) "0~%")
-      (send '(:all :log) game*!players "~:[1~;2~]~%" (is (winner game*) 'o))))
+      (send '(:all :log) game*!players "~:[1~;2~]~%" (is (winner) 'o))))
 
 (defmethod read-input ((game tic-tac-toe) flag &rest args)
   "Read the input for a tic-tac-toe game"
@@ -95,19 +95,13 @@
           line (read-line :from player!socket!socket-stream))
     (mvb (match strings) (scan-to-strings "^(\\d*) (\\d*)\\s*$" line)
       (unless match
-        (error 'invalid-move
-               :format-control "~S is malformed input."
-               :format-arguments (list (keep [isa _ 'standard-char] line))))
+        (signal-invalid-move "~S is malformed input." (list (keep [isa _ 'standard-char] line))))
       (let (r c) (map #'parse-integer strings)
         (unless (<= 0 r (dec dims*))
-          (error 'invalid-move
-                 :format-control "The row index ~A is illegal."
-                 :format-arguments (list r)))
+          (signal-invalid-move "The row index ~A is illegal." (list r)))
         (unless (<= 0 c (dec dims*))
-          (error 'invalid-move
-                 :format-control "The column index ~A is illegal."
-                 :format-arguments (list c)))
+          (signal-invalid-move  "The column index ~A is illegal." (list c)))
         (when game!board.r.c
-          (error 'invalid-move :format-control "The square is already taken."))
+          (signal-invalid-move "The square is already taken."))
         (values r c)))))
 

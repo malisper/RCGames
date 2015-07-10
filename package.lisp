@@ -7,4 +7,4 @@
            :start-server :set-cont :socket*
            :game :player :game* :need :players :flags
            :send :send-log :disconnect
-           :socket :game-error :invalid-move))
+           :socket :game-error :invalid-move :signal-game-error :signal-invalid-move))

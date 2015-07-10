@@ -50,8 +50,8 @@
       (each socket misc-sockets*
         (socket-close socket)
         (= sockets* (rem socket sockets*))
-        (rem-cont socket)
-        (= misc-sockets* '()))
+        (rem-cont socket))
+      (= misc-sockets* '())
       (each game (copy-list (keys game->sockets*))
         (send :all game!players "~A~%" unknown-error-code*)
         (disconnect game)))))
@@ -74,6 +74,7 @@
                     :report "Disconnect the current game."
                     (send :all socket->game*.socket!players "~A~%" unknown-error-code*)
                     (disconnect)
+                    ;; Same as above.
                     (return)))))))))
 
 (def disconnect (? (game game*))
@@ -96,36 +97,43 @@
 (defcont add-player (arr)
   "Connect a given player."
   (let socket (socket-accept socket*)
-    (set-cont socket (read-flags arr))
     (push socket sockets*)
-    (push socket misc-sockets*)))
+    (push socket misc-sockets*)
+    (set-cont socket (read-flags arr))))
 
 (defcont read-flags (arr)
   "Reads the flags from the player."
-  (withs (game arr!aref
-          flags (parse-flags))
-    (if (is flags :invalid)
-        (do (format socket*!socket-stream "~A~%" invalid-flag-code*)
-            (force-output socket*!socket-stream)
+  (let game* arr!aref
+    (mvb (flags input-flags) (parse-flags)
+      (if (is flags :invalid)
+          (do (format socket*!socket-stream "~A~%" invalid-flag-code*)
+              (force-output socket*!socket-stream)
             (set-cont socket* (read-flags arr)))
-        (let player (inst 'player :socket socket* :flags flags)
-          (push socket* game->sockets*.game)
-          (= socket->game*.socket* game)
-          (= misc-sockets* (rem socket* misc-sockets*))
-          (push player game!players)
-          (when (is game!players!len game!need)
-            ;; Have the continuation add players to a new game instead of
-            ;; the current one. It is safe to use type-of as it will always
-            ;; return the class-name of a class with a proper name.
-            (= arr!aref (inst (type-of game)))
-            (let game* game
-              (start-game game)))))))
+          (let player (inst 'player :socket socket* :flags flags :input-flags input-flags)
+               (push socket* game->sockets*.game*)
+               (= socket->game*.socket* game*)
+               (= misc-sockets* (rem socket* misc-sockets*))
+               (push player game*!players)
+               (when (is game*!players!len game*!need)
+                 ;; Have the continuation add players to a new game instead of
+                 ;; the current one. It is safe to use type-of as it will always
+                 ;; return the class-name of a class with a proper name.
+                 (= arr!aref (inst (type-of game*)))
+                 (start-game game*)))))))
 
 (def parse-flags ()
   "Returns the flags the socket wants to use. If they aren't valid
    returns :INVALID."
   (ado (read-line :from socket*!socket-stream)
        (tokens it)
-       (check it
-              [subsetp _ socket->game*!flags]
-              :invalid)))
+       (if (~valid it)
+           :invalid
+           (let flags (map [intern _ :keyword] it)
+              (values (set-difference flags game*!input-flags)
+                      (intersection   flags game*!input-flags))))))
+
+(def valid (flags)
+  "Are these flags valid?"
+  (and (subsetp flags game*!flags :test #'string-equal)
+       (or (no game*!input-flags)
+           (single (intersection flags game*!input-flags :test #'string=)))))
