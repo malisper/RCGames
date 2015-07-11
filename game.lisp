@@ -6,11 +6,10 @@
   need  
   players
   game-log
-  flags
-  input-flags)
+  flags)
 
 (deftem (player (:conc-name nil))
-  socket flags input-flags)
+  socket flags)
 
 (def send (flags players &rest args)
   "Takes a single player or a list of players, and a flag or list of

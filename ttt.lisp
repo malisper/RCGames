@@ -35,7 +35,7 @@
 (defmethod start-game ((game tic-tac-toe))
   "Initialize the actual game."
   (= game!current (car game!players))
-  (set-cont socket* (play-turn))
+  (set-cont game!current (play-turn))
   (send :log nil "TTT ~A~%" (len game!players))
   (send :all game!current "1~%")
   (send :all (next)    "2~%"))

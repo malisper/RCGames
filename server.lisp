@@ -128,12 +128,8 @@
        (tokens it)
        (if (~valid it)
            :invalid
-           (let flags (map [intern _ :keyword] it)
-              (values (set-difference flags game*!input-flags)
-                      (intersection   flags game*!input-flags))))))
+           (map [intern _ :keyword] it))))
 
 (def valid (flags)
   "Are these flags valid?"
-  (and (subsetp flags game*!flags :test #'string-equal)
-       (or (no game*!input-flags)
-           (single (intersection flags game*!input-flags :test #'string=)))))
+  (subsetp flags game*!flags :test #'string-equal))
