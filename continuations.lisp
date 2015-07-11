@@ -6,8 +6,6 @@
   "A mapping of sockets to continuations that should be called when
    that socket is available.")
 
-(defparameter socket* nil "The current socket being read from.")
-
 (mac defcont (name args &body body)
   "Define a continuation. It takes two arguments, the arguments to
    create the continuation and the arguments actually passed to the
@@ -29,7 +27,7 @@
 
 (defmethod call-cont :around ((socket stream-usocket))
   "For a game socket we want to remove the continuation after using it if it does not change."
-  (let val conts*.socket
+  (with (val conts*.socket player* socket->player*.socket)
     (prog1 (call-next-method)
       (when (is val conts*.socket)
         (remhash socket conts*)))))
@@ -39,4 +37,5 @@
   (remhash socket conts*))
 
 (def set-cont (socket cont)
+  "Set the continuation for a given socket."
   (= conts*.socket cont))

@@ -19,6 +19,7 @@
 (define-simple-error no-continuation)
 (define-simple-error game-error)
 (define-simple-error invalid-move)
+(define-simple-error invalid-flags)
 
 (def restart-cont-handler (condition)
   "A restart handler for restarting the current players turn."

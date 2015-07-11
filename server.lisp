@@ -23,9 +23,18 @@
   "A table mapping from a game to all of the sockets we need to
    disconnect if a player disconnects.")
 
+(defparameter socket->player* (table)
+  "A table mapping from sockets to the player who posses that socket.")
+
 (defparameter game* nil
   "The current game being played. This is used as a dynamic variable
    so that any function can determine what the current game is.")
+
+(defparameter player* nil
+  "The current player.")
+
+(defparameter socket* nil
+  "The current socket being read from.")
 
 (defparameter disconnected-code* -1 "The code for when a player disconnects.")
 (defparameter unknown-error-code* -2 "The code for when an unknown error occurs.")
@@ -84,7 +93,8 @@
   (each socket game->sockets*.game
     (remhash socket socket->game*)
     (rem-cont socket)
-    (socket-close socket))
+    (socket-close socket)
+    (remhash socket socket->player*))
   (remhash game game->sockets*)
   (wipe game!players)
   (when log-file*
@@ -103,23 +113,25 @@
 
 (defcont read-flags (arr)
   "Reads the flags from the player."
-  (let game* arr!aref
-    (mvb (flags input-flags) (parse-flags)
-      (if (is flags :invalid)
-          (do (format socket*!socket-stream "~A~%" invalid-flag-code*)
-              (force-output socket*!socket-stream)
+  ;; The dynamic value of game* needs to be seen by parse-flags.
+  (withs (game* arr!aref
+          flags (parse-flags))
+    (if (is flags :invalid)
+        (do (format socket*!socket-stream "~A~%" invalid-flag-code*)
+            (force-output socket*!socket-stream)
             (set-cont socket* (read-flags arr)))
-          (let player (inst 'player :socket socket* :flags flags :input-flags input-flags)
-               (push socket* game->sockets*.game*)
-               (= socket->game*.socket* game*)
-               (= misc-sockets* (rem socket* misc-sockets*))
-               (push player game*!players)
-               (when (is game*!players!len game*!need)
-                 ;; Have the continuation add players to a new game instead of
-                 ;; the current one. It is safe to use type-of as it will always
-                 ;; return the class-name of a class with a proper name.
-                 (= arr!aref (inst (type-of game*)))
-                 (start-game game*)))))))
+        (let player (inst 'player :socket socket* :flags flags)
+          (= socket->player*.socket* player)
+          (push socket* game->sockets*.game*)
+          (= socket->game*.socket* game*)
+          (= misc-sockets* (rem socket* misc-sockets*))
+          (push player game*!players)
+          (when (is game*!players!len game*!need)
+            ;; Have the continuation add players to a new game instead of
+            ;; the current one. It is safe to use type-of as it will always
+            ;; return the class-name of a class with a proper name.
+            (= arr!aref (inst (type-of game*)))
+            (start-game game*))))))
 
 (def parse-flags ()
   "Returns the flags the socket wants to use. If they aren't valid

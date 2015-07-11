@@ -29,19 +29,24 @@
 (defgeneric start-game (game)
   (:documentation "Starts the actual game."))
 
-(defgeneric read-input (game flag &rest args)
+(defgeneric read-input (game flag)
   (:documentation "Reads the input for the game.")
-  (:method :around (game (flag symbol) &rest args)
-    (declare (ignore args))
+  (:method :around (game (flag symbol))
     ;; When a player makes an illegal move we will disconnect them.
     (handler-bind ((invalid-move #'disconnect-handler))
       (call-next-method))))
 
-(def read-move (player flags &rest args)
-  "Calls read-input with one of the flags shared between the player
-   and the maybe, list flags."
-  (let both (intersection player!flags (mklist flags))
-    (if (~single both)
-        (signal-invalid-flags "The current player doesn't have one of the necessaray flags proper flags.")
-        (apply #'read-input game* (car both) args))))
+(mac defstart (game &body body)
+  `(defmethod start-game ((,(gensym) ,game))
+     (let player* (car game*!players)
+       ,@body)))
 
+(mac defread (game flag &body body)
+  `(defmethod read-input ((,(gensym) ,game)
+                          ;; If there is no flag don't specify on it
+                          ,(if (no flag) (gensym) `(,(gensym) ,flag)))
+     ,@body))
+
+(def read-move (? flags)
+  "Read a move from the given player with the format being one of FLAGS."
+  (read-input game* (intersection player*!flags (mklist flags))))

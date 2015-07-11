@@ -14,11 +14,10 @@
 
 (defparameter dims* 3 "The side length of the tic-tac-toe board.")
 
-;; We only support one way of input and output so there are now
-;; additional flags added..
+;; We only support one format for input and output in tic-tac-toe so
+;; there are no additional flags added.
 (deftem (tic-tac-toe (:conc-name nil) (:include game))
   (need 2)
-  current
   (board (make-array (list dims* dims*) :initial-element nil)))
 
 (defmethod print-object ((game tic-tac-toe) stream)
@@ -32,29 +31,27 @@
       (unless (is r (dec dims*))
         (prn (make-string (+ dims* dims* -1) :initial-element #\-))))))
 
-(defmethod start-game ((game tic-tac-toe))
-  "Initialize the actual game."
-  (= game!current (car game!players))
-  (set-cont game!current (play-turn))
-  (send :log nil "TTT ~A~%" (len game!players))
-  (send :all game!current "1~%")
-  (send :all (next)    "2~%"))
+(defstart tic-tac-toe
+  (set-cont player*!socket (play-turn))
+  (send :log nil "TTT ~A~%" (len game*!players))
+  (send :all player* "1~%")
+  (send :all (next)  "2~%"))
 
 (defcont play-turn ()
   "Performs a turn for the current player."
-  (mvb (r c) (read-input game* game*!current)
-    (= game*!board.r.c (if (is game*!current game*!players!car) 'x 'o))
-    (send :log nil "~A: ~A ~A~%" (inc+pos game*!current game*!players) r c)
+  (mvb (r c) (read-move)
+    (= game*!board.r.c (if (is player* game*!players!car) 'x 'o))
+    (send :log nil "~A: ~A ~A~%" (inc+pos player* game*!players) r c)
     (send :all (next) "~A ~A~%" r c)
     (if (winner)
       (do (announce-winner)
           (disconnect))
-      (do (= game*!current (next))
-          (set-cont game*!current!socket (play-turn))))))
+      (set-cont (socket (next))
+                (play-turn)))))
 
 (def next ()
   "Returns the next player in the game."
-  (aif (cadr+mem game*!current game*!players)
+  (aif (cadr+mem player* game*!players)
     it
     (car game*!players)))
 
@@ -88,20 +85,17 @@
       (send '(:all :log) "0~%")
       (send '(:all :log) game*!players "~:[1~;2~]~%" (is (winner) 'o))))
 
-(defmethod read-input ((game tic-tac-toe) flag &rest args)
-  "Read the input for a tic-tac-toe game"
-  (declare (ignore flag args))
-  (withs (player game!current
-          line (read-line :from player!socket!socket-stream))
+(defread tic-tac-toe nil nil
+  (let line (read-line :from socket*!socket-stream)
     (mvb (match strings) (scan-to-strings "^(\\d*) (\\d*)\\s*$" line)
       (unless match
         (signal-invalid-move "~S is malformed input." (list (keep [isa _ 'standard-char] line))))
       (let (r c) (map #'parse-integer strings)
-        (unless (<= 0 r (dec dims*))
-          (signal-invalid-move "The row index ~A is illegal." (list r)))
-        (unless (<= 0 c (dec dims*))
-          (signal-invalid-move  "The column index ~A is illegal." (list c)))
-        (when game!board.r.c
-          (signal-invalid-move "The square is already taken."))
-        (values r c)))))
+           (unless (<= 0 r (dec dims*))
+             (signal-invalid-move "The row index ~A is illegal." (list r)))
+           (unless (<= 0 c (dec dims*))
+             (signal-invalid-move  "The column index ~A is illegal." (list c)))
+           (when game*!board.r.c
+             (signal-invalid-move "The square is already taken."))
+           (values r c)))))
 
