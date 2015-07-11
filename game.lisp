@@ -3,10 +3,7 @@
 (syntax:use-syntax :clamp)
 
 (deftem (game (:conc-name nil))
-  need  
-  players
-  game-log
-  flags)
+  need players game-log flags)
 
 (deftem (player (:conc-name nil))
   socket flags)
@@ -34,11 +31,17 @@
 
 (defgeneric read-input (game flag &rest args)
   (:documentation "Reads the input for the game.")
-  (:method (game (player player) &rest args)
-    (apply #'read-input game (input-flags player) args))
   (:method :around (game (flag symbol) &rest args)
     (declare (ignore args))
     ;; When a player makes an illegal move we will disconnect them.
     (handler-bind ((invalid-move #'disconnect-handler))
       (call-next-method))))
+
+(def read-move (player flags &rest args)
+  "Calls read-input with one of the flags shared between the player
+   and the maybe, list flags."
+  (let both (intersection player!flags (mklist flags))
+    (if (~single both)
+        (signal-invalid-flags "The current player doesn't have one of the necessaray flags proper flags.")
+        (apply #'read-input game* (car both) args))))
 
