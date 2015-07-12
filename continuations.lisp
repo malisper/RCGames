@@ -2,9 +2,8 @@
 (in-package :server)
 (syntax:use-syntax :clamp)
 
-(defparameter conts* (table)
-  "A mapping of sockets to continuations that should be called when
-   that socket is available.")
+(defparameter game* nil "The current game being played.")
+(defparameter player* nil "The current player and/or socket.")
 
 (mac defcont (name args &body body)
   "Define a continuation. It takes two arguments, the arguments to
@@ -14,28 +13,30 @@
      ,(check (car body) #'stringp)
      (fn () ,@body)))
 
-(defmethod call-cont (socket)
-  "Calls the continuation for a socket."
-  (aif2 conts*.socket
+(defmethod call-cont (obj)
+  "Calls the continuation for OBJ which is an object that has a
+   continuation.."
+  (let player* obj
+     (prn player*)
+    (if (cont-p obj)
         (w/repeat-restart restart-continuation "Restart the current continuation being called."
-          (call it))
-        (restart-case (signal-no-continuation "No continuation found for the given socket.")
+          (call obj!cont))
+        (restart-case (signal-no-continuation "No continuation found for the given object.")
           (ignore-input ()
-            :report "Ignore all of the input from the socket."
-            (while (listen socket!socket-stream)
-              (read-line :from socket!socket-stream))))))
+            :report "Ignore all of the input from the obj."
+            (while (listen obj!obj-stream)
+              (read-line :from obj!obj-stream)))))))
 
-(defmethod call-cont :around ((socket stream-usocket))
-  "For a game socket we want to remove the continuation after using it if it does not change."
-  (with (val conts*.socket player* socket->player*.socket)
-    (prog1 (call-next-method)
-      (when (is val conts*.socket)
-        (remhash socket conts*)))))
+(defmethod call-cont :around ((obj player))
+  (let game* obj!game
+    (call-next-method)))
 
-(def rem-cont (socket)
-  "Remove the continuation for the given socket."
-  (remhash socket conts*))
-
-(def set-cont (socket cont)
-  "Set the continuation for a given socket."
-  (= conts*.socket cont))
+(defmethod (setf cont) :around ((val function) (player player))
+  "For a player we modify the continuation to remove itself when it is
+   called if it still the player's continuation after being called."
+  (call-next-method
+   (afn ()
+     (prog1 (call val)
+       (when (is player!cont #'self)
+         (wipe player!cont))))
+   player))

@@ -2,12 +2,6 @@
 (in-package :server)
 (syntax:use-syntax :clamp)
 
-(deftem (game (:conc-name nil))
-  need players game-log flags)
-
-(deftem (player (:conc-name nil))
-  socket flags)
-
 (def send (flags players &rest args)
   "Takes a single player or a list of players, and a flag or list of
    flags to print, and then uses format to print the strings to all of
@@ -18,7 +12,7 @@
                    players
                    (keep flags players :key #'flags :test #'intersection))
     (check-type player player)
-    (let stream player!socket!socket-stream
+    (let stream player!socket-stream
       (apply #'format stream args)
       (force-output stream)))
   (when (mem :log flags)
@@ -38,7 +32,8 @@
 
 (mac defstart (game &body body)
   `(defmethod start-game ((,(gensym) ,game))
-     (let player* (car game*!players)
+     (withs (player* (car game*!players)
+             game* player*!game)
        ,@body)))
 
 (mac defread (game flag &body body)

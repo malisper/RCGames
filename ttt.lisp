@@ -18,7 +18,11 @@
 ;; there are no additional flags added.
 (deftem (tic-tac-toe (:conc-name nil) (:include game))
   (need 2)
-  (board (make-array (list dims* dims*) :initial-element nil)))
+  (board (make-array (list dims* dims*) :initial-element nil))
+  (player-type 'ttt-player))
+
+(deftem (ttt-player (:conc-name nil) (:include player))
+  piece)
 
 (defmethod print-object ((game tic-tac-toe) stream)
   (let *standard-output* stream
@@ -32,7 +36,9 @@
         (prn (make-string (+ dims* dims* -1) :initial-element #\-))))))
 
 (defstart tic-tac-toe
-  (set-cont player*!socket (play-turn))
+  (= player*!piece 'x)
+  (= (piece+next) 'o)
+  (= player*!cont (play-turn))
   (send :log nil "TTT ~A~%" (len game*!players))
   (send :all player* "1~%")
   (send :all (next)  "2~%"))
@@ -40,14 +46,14 @@
 (defcont play-turn ()
   "Performs a turn for the current player."
   (mvb (r c) (read-move)
-    (= game*!board.r.c (if (is player* game*!players!car) 'x 'o))
+    (= game*!board.r.c player*!piece)
     (send :log nil "~A: ~A ~A~%" (inc+pos player* game*!players) r c)
     (send :all (next) "~A ~A~%" r c)
     (if (winner)
       (do (announce-winner)
           (disconnect))
-      (set-cont (socket (next))
-                (play-turn)))))
+      (= (cont+next)
+         (play-turn)))))
 
 (def next ()
   "Returns the next player in the game."
@@ -85,8 +91,8 @@
       (send '(:all :log) "0~%")
       (send '(:all :log) game*!players "~:[1~;2~]~%" (is (winner) 'o))))
 
-(defread tic-tac-toe nil nil
-  (let line (read-line :from socket*!socket-stream)
+(defread tic-tac-toe nil
+  (let line (read-line :from player*!socket-stream)
     (mvb (match strings) (scan-to-strings "^(\\d*) (\\d*)\\s*$" line)
       (unless match
         (signal-invalid-move "~S is malformed input." (list (keep [isa _ 'standard-char] line))))
