@@ -17,7 +17,6 @@
   "Calls the continuation for OBJ which is an object that has a
    continuation.."
   (let player* obj
-     (prn player*)
     (if (cont-p obj)
         (w/repeat-restart restart-continuation "Restart the current continuation being called."
           (call obj!cont))

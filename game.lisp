@@ -23,6 +23,18 @@
 (defgeneric start-game (game)
   (:documentation "Starts the actual game."))
 
+(defmethod start-game :around (game)
+  "Bind player* and game* to the proper values before starting the game."
+  (withs (player* (car game*!players)
+          game* player*!game)
+    (call-next-method)))
+
+(defmethod start-game :before (game)
+  "Initialize all of the player numbers."
+  (iter (for i from 1)
+        (for player in game!players)
+        (= player!num i)))
+
 (defgeneric read-input (game flag)
   (:documentation "Reads the input for the game.")
   (:method :around (game (flag symbol))
@@ -32,9 +44,7 @@
 
 (mac defstart (game &body body)
   `(defmethod start-game ((,(gensym) ,game))
-     (withs (player* (car game*!players)
-             game* player*!game)
-       ,@body)))
+     ,@body))
 
 (mac defread (game flag &body body)
   `(defmethod read-input ((,(gensym) ,game)
@@ -44,4 +54,9 @@
 
 (def read-move (? flags)
   "Read a move from the given player with the format being one of FLAGS."
-  (read-input game* (intersection player*!flags (mklist flags))))
+  (let int (intersection player*!flags (mklist flags))
+    (unless (or (no flags) (single int))
+      (if (and flags int)
+          (signal-invalid-flags "None of the flags in ~A are members of ~A." player*!flags flags)
+          (signal-invalid-flags "Multiple of the flags in ~A are members of ~A." player*!flags flags)))
+    (read-input game* (car int))))

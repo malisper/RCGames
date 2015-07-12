@@ -37,23 +37,25 @@
 
 (defstart tic-tac-toe
   (= player*!piece 'x)
+  (= player*!num 1)
   (= (piece+next) 'o)
+  (= (num+next) 2)
   (= player*!cont (play-turn))
+  
   (send :log nil "TTT ~A~%" (len game*!players))
-  (send :all player* "1~%")
-  (send :all (next)  "2~%"))
+  (each player game*!players
+    (send :all player "~A~%" player!num)))
 
 (defcont play-turn ()
   "Performs a turn for the current player."
-  (mvb (r c) (read-move)
-    (= game*!board.r.c player*!piece)
-    (send :log nil "~A: ~A ~A~%" (inc+pos player* game*!players) r c)
-    (send :all (next) "~A ~A~%" r c)
+  (let move (read-move)
+    (validate move)
+    (perform-move move)
+    (send-move move)
     (if (winner)
       (do (announce-winner)
           (disconnect))
-      (= (cont+next)
-         (play-turn)))))
+      (= (cont+next) (play-turn)))))
 
 (def next ()
   "Returns the next player in the game."
@@ -61,8 +63,8 @@
     it
     (car game*!players)))
 
-(def winner ()
-  "Is there a winner of this game*? If so return the piece of that player."
+(def winning-piece ()
+  "If there is a winner of this game, return their piece."
   ;; By using 'and' in the way below, the return value will be the
   ;; winning player.
   (or (iter (for r from 0 below dims*)
@@ -85,23 +87,44 @@
                        (in out (always game*!board.r.c))))
            'tie)))
 
+(def winner ()
+  "Is there a winner of this game*? If so return the piece of that
+   player. Returns the symbol 'tie' if there is a tie."
+  (awhen (winning-piece)
+    (if (is it 'tie)
+        it
+        (find it game*!players :key #'piece))))
+
 (def announce-winner ()
   "Announce the winner of the game*."
-  (if (is (winner) 'tie)
-      (send '(:all :log) "0~%")
-      (send '(:all :log) game*!players "~:[1~;2~]~%" (is (winner) 'o))))
+  (let winner (winner)
+    (if (is winner 'tie)
+        (send '(:all :log) game*!players "0~%")
+        (send '(:all :log) game*!players "~A~%" winner!num))))
 
 (defread tic-tac-toe nil
   (let line (read-line :from player*!socket-stream)
     (mvb (match strings) (scan-to-strings "^(\\d*) (\\d*)\\s*$" line)
       (unless match
-        (signal-invalid-move "~S is malformed input." (list (keep [isa _ 'standard-char] line))))
-      (let (r c) (map #'parse-integer strings)
-           (unless (<= 0 r (dec dims*))
-             (signal-invalid-move "The row index ~A is illegal." (list r)))
-           (unless (<= 0 c (dec dims*))
-             (signal-invalid-move  "The column index ~A is illegal." (list c)))
-           (when game*!board.r.c
-             (signal-invalid-move "The square is already taken."))
-           (values r c)))))
+        (signal-malformed-input "~S is malformed input. The format should be 'ROW COL'." (list (keep [isa _ 'standard-char] line))))
+      (map #'parse-integer strings))))
 
+(def validate (move)
+  "Checks that the move is valid. If not, signals an error."
+  (let (r c) move
+    (unless (<= 0 r (dec dims*))
+      (signal-invalid-move "The row ~A is illegal, should be between 0 and ~A." r (dec dims*)))
+    (unless (<= 0 c (dec dims*))
+      (signal-invalid-move "The column ~A is illegal, should be between 0 and ~A." c (dec dims*)))
+    (when game*!board.r.c
+      (signal-invalid-move "The square (~A,~A) is already taken." r c))))
+
+(def send-move (move)
+  "Send the move to all of the other players."
+  (send :all (rem player* game*!players) "~{~A ~A~}~%" move))
+
+(def perform-move (move)
+  "Actually perform the move on the board. This is the only function
+   allowed to mutate the board."
+  (let (r c) move
+    (= game*!board.r.c player*!piece)))
