@@ -17,19 +17,18 @@
   "Calls the continuation for OBJ which is an object that has a
    continuation.."
   (let player* obj
-    (if (cont-p obj)
-        (w/repeat-restart restart-continuation "Restart the current continuation being called."
-          (call obj!cont))
-        (restart-case (signal-no-continuation "No continuation found for the given object.")
-          (ignore-input ()
-            :report "Ignore all of the input from the obj."
-            (while (listen obj!obj-stream)
-              (read-line :from obj!obj-stream)))))))
+    (aif obj!cont
+      (w/repeat-restart restart-continuation "Restart the current continuation being called."
+        (call it))
+      (restart-case (signal-no-continuation "No continuation found for the given object.")
+        (ignore-input ()
+          :report "Ignore all of the input from the obj."
+          (while (listen obj!obj-stream)
+            (read-line :from obj!obj-stream)))))))
 
 (defmethod call-cont :around ((obj player))
   (let game* obj!game
-    (handler-bind ((game-error #'disconnect-handler))
-      (call-next-method))))
+    (call-next-method)))
 
 (defmethod (setf cont) :around ((val function) (player player))
   "For a player we modify the continuation to remove itself when it is

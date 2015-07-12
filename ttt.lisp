@@ -28,7 +28,7 @@
   (let *standard-output* stream
     (up r 0 dims*
       (up c 0 dims*
-        (prf "~:[ ~;~:*~A~]" game!board.r.c)
+        (prf "~A" (aif game!board.r.c it!piece " "))
         (unless (is c (dec dims*))
           (pr "|")))
       (prn)
@@ -37,14 +37,8 @@
 
 (defstart tic-tac-toe
   (= player*!piece 'x)
-  (= player*!num 1)
   (= (piece+next) 'o)
-  (= (num+next) 2)
-  (= player*!cont (play-turn))
-  
-  (send :log nil "TTT ~A~%" (len game*!players))
-  (each player game*!players
-    (send :all player "~A~%" player!num)))
+  (= player*!cont (play-turn)))
 
 (defcont play-turn ()
   "Performs a turn for the current player."
@@ -78,11 +72,12 @@
   "Actually perform the move on the board. This is the only function
    allowed to mutate the board."
   (let (r c) move
-    (= game*!board.r.c player*!piece)))
+    (= game*!board.r.c player*)))
 
 (def send-move (move)
   "Send the move to all of the other players."
-  (send :all (rem player* game*!players) "~{~A ~A~}~%" move))
+  (send :all (rem player* game*!players) "~{~A ~A~}~%" move)
+  (send :log nil "~A: ~{~A ~A~}~%" player*!num move))
 
 (def next ()
   "Returns the next player in the game."
@@ -90,8 +85,9 @@
     it
     (car game*!players)))
 
-(def winning-piece ()
-  "If there is a winner of this game, return their piece."
+(def winner ()
+  "If there is a winner of this game, return that player. Returns the
+   symbol 'tie' if it is a tie."
   ;; By using 'and' in the way below, the return value will be the
   ;; winning player.
   (or (iter (for r from 0 below dims*)
@@ -114,16 +110,8 @@
                        (in out (always game*!board.r.c))))
            'tie)))
 
-(def winner ()
-  "Is there a winner of this game*? If so return the piece of that
-   player. Returns the symbol 'tie' if there is a tie."
-  (awhen (winning-piece)
-    (if (is it 'tie)
-        it
-        (find it game*!players :key #'piece))))
-
 (def announce-winner ()
-  "Announce the winner of the game*."
+  "Announce the winner of the game*. If it is a tie, send 0 to all of the players and the log. Otherwise send "
   (let winner (winner)
     (if (is winner 'tie)
         (send '(:all :log) game*!players "0~%")

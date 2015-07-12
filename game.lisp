@@ -30,10 +30,15 @@
     (call-next-method)))
 
 (defmethod start-game :before (game)
-  "Initialize all of the player numbers."
+  "Initialize all of the player numbers. And send that information to
+   the players and to the log."
   (iter (for i from 1)
         (for player in game!players)
-        (= player!num i)))
+        (= player!num i))
+  (send :log nil "TTT ~A~%" (len game*!players))
+  (send :log nil "~{~{~A~^.~}~^ ~}~%" (map (compose [coerce _ 'list] #'get-peer-address) game!players))
+  (each player game*!players
+    (send :all player "~A~%" player!num)))
 
 (defgeneric read-input (game flag)
   (:documentation "Reads the input for the game."))

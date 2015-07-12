@@ -9,6 +9,10 @@
            :game* :player*
            :game :need :players :flags :player-type
            :player :num
+
+           :no-continuation :game-error
            :invalid-move :signal-invalid-move
            :invalid-flag :signal-invalid-flag
-           :malformed-input :signal-malformed-input))
+           :malformed-input :signal-malformed-input
+
+           :disconnect-handler :ignore-input-handler :restart-continuation-handler))

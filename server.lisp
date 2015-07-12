@@ -45,13 +45,19 @@
                   ;; We need to go through the loop again since we may
                   ;; have disconnected some of the other ready sockets.
                   (return))
-              (restart-case (call-cont socket)
+              
+              ;; I may want to change this to handler-case, but right
+              ;; now it seems reasonable that other places might want
+              ;; to bind different handlers and maybe use the
+              ;; disconnect restart.
+              (restart-case (handler-bind ((game-error #'disconnect-handler))
+                              (call-cont socket))
                 (disconnect (c)
                   :report "Disconnect the current game."
                   (send :all socket "~A~%" c!code)
                   (send :all (rem socket socket!game!players) "~A~%" disconnected-code*)
                   (disconnect socket!game)
-                  ;; Same as above.
+                  ;; Same as above with going through the loop again.
                   (return))))))))
 
 (def disconnect (? (game game*))
