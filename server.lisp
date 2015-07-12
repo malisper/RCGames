@@ -11,10 +11,6 @@
 (defparameter sockets* '()
   "A list of all of the sockets we need to listen for.")
 
-(defparameter disconnected-code*  -1 "The code for when a player disconnects.")
-(defparameter unknown-error-code* -2 "The code for when an unknown error occurs.")
-(defparameter invalid-flag-code*  -3 "The code for when a player enters an illegal flag.")
-
 (def start-server (games)
   "GAMES should be a list of duples Each one containing a game-type,
    and a port for players to connect to."
@@ -50,10 +46,11 @@
                   ;; have disconnected some of the other ready sockets.
                   (return))
               (restart-case (call-cont socket)
-                (disconnect ()
+                (disconnect (c)
                   :report "Disconnect the current game."
-                  (send :all socket!game!players "~A~%" unknown-error-code*)
-                  (disconnect)
+                  (send :all socket "~A~%" c!code)
+                  (send :all (rem socket socket!game!players) "~A~%" disconnected-code*)
+                  (disconnect socket!game)
                   ;; Same as above.
                   (return))))))))
 

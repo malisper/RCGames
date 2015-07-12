@@ -28,7 +28,8 @@
 
 (defmethod call-cont :around ((obj player))
   (let game* obj!game
-    (call-next-method)))
+    (handler-bind ((game-error #'disconnect-handler))
+      (call-next-method))))
 
 (defmethod (setf cont) :around ((val function) (player player))
   "For a player we modify the continuation to remove itself when it is

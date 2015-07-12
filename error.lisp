@@ -2,10 +2,12 @@
 (in-package :server)
 (syntax:use-syntax :clamp)
 
-(mac define-simple-error (name)
+(define-condition game-error (simple-error) ())
+
+(mac define-game-error (name code)
   "Define a condition that inherits from simple-error. Also define a
    macro that makes will send an error with the given type."
-  `(do (define-condition ,name (simple-error) ())
+  `(do (define-condition ,name (game-error) ((code :accessor code :allocation :class :initform ,code)))
        (mac ,(symb 'signal- name) (format-control &rest format-arguments)
          ,(format nil "Signals a condition of type ~A." name)
          `(error ',',name :format-control ,format-control :format-arguments (list ,@format-arguments)))))
@@ -16,28 +18,21 @@
   `(loop (restart-case (return ,@body)
            (,name () :report ,report))))
 
-(define-simple-error no-continuation)
-(define-simple-error game-error)
-(define-simple-error invalid-move)
-(define-simple-error malformed-input)
-(define-simple-error invalid-flags)
+(defparameter disconnected-code*  -1 "The code for when a different player disconnects.")
+(defparameter unknown-error-code* -2 "The code for when an unknown error occurs.")
 
-(def restart-cont-handler (condition)
-  "A restart handler for restarting the current players turn."
-  (when (find-restart 'restart-cc)
-    (invoke-restart 'restart-turn "~? Please make a valid move.~%"
-                    (simple-condition-format-control condition)
-                    (simple-condition-format-arguments condition))))
+(define-game-error no-continuation -3)
+(define-game-error invalid-move -4)
+(define-game-error malformed-input -5)
+(define-game-error invalid-flags -6)
 
-(def disconnect-handler (&rest args)
-  "A restart handler for disconnecting the current game."
-  (declare (ignore args))
-  (when (find-restart 'disconnect)
-    (invoke-restart 'disconnect)))
+(mac defhandler (name)
+  "Define a handler for the restart of name NAME."
+  (w/uniq gargs
+    `(def ,(symb name '-handler) (&rest ,gargs)
+       (when (find-restart ',name)
+         (apply #'invoke-restart ',name ,gargs)))))
 
-(def ignore-input-handler (&rest args)
-  "A restart handler for ignoring the input from a player that
-   performs out of turn.."
-  (declare (ignore args))
-  (when (find-restart 'ignore-input)
-    (invoke-restart 'ignore-input)))
+(defhandler restart-continuation)
+(defhandler disconnect)
+(defhandler ignore-input)

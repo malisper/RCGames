@@ -57,6 +57,33 @@
           (disconnect))
       (= (cont+next) (play-turn)))))
 
+(defread tic-tac-toe nil
+  (let line (read-line :from player*!socket-stream)
+    (mvb (match strings) (scan-to-strings "^(\\d*) (\\d*)\\s*$" line)
+      (unless match
+        (signal-malformed-input "~S is malformed input. The format should be 'ROW COL'." (list (keep [isa _ 'standard-char] line))))
+      (map #'parse-integer strings))))
+
+(def validate (move)
+  "Checks that the move is valid. If not, signals an error."
+  (let (r c) move
+    (unless (<= 0 r (dec dims*))
+      (signal-invalid-move "The row ~A is illegal, should be between 0 and ~A." r (dec dims*)))
+    (unless (<= 0 c (dec dims*))
+      (signal-invalid-move "The column ~A is illegal, should be between 0 and ~A." c (dec dims*)))
+    (when game*!board.r.c
+      (signal-invalid-move "The square (~A,~A) is already taken." r c))))
+
+(def perform-move (move)
+  "Actually perform the move on the board. This is the only function
+   allowed to mutate the board."
+  (let (r c) move
+    (= game*!board.r.c player*!piece)))
+
+(def send-move (move)
+  "Send the move to all of the other players."
+  (send :all (rem player* game*!players) "~{~A ~A~}~%" move))
+
 (def next ()
   "Returns the next player in the game."
   (aif (cadr+mem player* game*!players)
@@ -101,30 +128,3 @@
     (if (is winner 'tie)
         (send '(:all :log) game*!players "0~%")
         (send '(:all :log) game*!players "~A~%" winner!num))))
-
-(defread tic-tac-toe nil
-  (let line (read-line :from player*!socket-stream)
-    (mvb (match strings) (scan-to-strings "^(\\d*) (\\d*)\\s*$" line)
-      (unless match
-        (signal-malformed-input "~S is malformed input. The format should be 'ROW COL'." (list (keep [isa _ 'standard-char] line))))
-      (map #'parse-integer strings))))
-
-(def validate (move)
-  "Checks that the move is valid. If not, signals an error."
-  (let (r c) move
-    (unless (<= 0 r (dec dims*))
-      (signal-invalid-move "The row ~A is illegal, should be between 0 and ~A." r (dec dims*)))
-    (unless (<= 0 c (dec dims*))
-      (signal-invalid-move "The column ~A is illegal, should be between 0 and ~A." c (dec dims*)))
-    (when game*!board.r.c
-      (signal-invalid-move "The square (~A,~A) is already taken." r c))))
-
-(def send-move (move)
-  "Send the move to all of the other players."
-  (send :all (rem player* game*!players) "~{~A ~A~}~%" move))
-
-(def perform-move (move)
-  "Actually perform the move on the board. This is the only function
-   allowed to mutate the board."
-  (let (r c) move
-    (= game*!board.r.c player*!piece)))

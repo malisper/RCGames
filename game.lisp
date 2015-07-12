@@ -36,11 +36,7 @@
         (= player!num i)))
 
 (defgeneric read-input (game flag)
-  (:documentation "Reads the input for the game.")
-  (:method :around (game (flag symbol))
-    ;; When a player makes an illegal move we will disconnect them.
-    (handler-bind ((invalid-move #'disconnect-handler))
-      (call-next-method))))
+  (:documentation "Reads the input for the game."))
 
 (mac defstart (game &body body)
   `(defmethod start-game ((,(gensym) ,game))
