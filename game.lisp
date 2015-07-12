@@ -35,7 +35,7 @@
   (iter (for i from 1)
         (for player in game!players)
         (= player!num i))
-  (send :log nil "TTT ~A~%" (len game*!players))
+  (send :log nil "~A ~A~%" (type-of game) (len game*!players))
   (send :log nil "~{~{~A~^.~}~^ ~}~%" (map (compose [coerce _ 'list] #'get-peer-address) game!players))
   (each player game*!players
     (send :all player "~A~%" player!num)))
@@ -50,7 +50,7 @@
 (mac defread (game flag &body body)
   `(defmethod read-input ((,(gensym) ,game)
                           ;; If there is no flag don't specify on it
-                          ,(if (no flag) (gensym) `(,(gensym) ,flag)))
+                          ,(if (no flag) (gensym) `(,(gensym) (eql ,flag))))
      ,@body))
 
 (def read-move (? flags)

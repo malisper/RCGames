@@ -16,9 +16,16 @@
 
 (deftem (super-tic-tac-toe (:conc-name nil) (:include game))
   (need 2)
-  current
   (board (make-array (n-of 4 dims*) :initial-element nil))
-  (metaboard (make-array (n-of 2 dims*) :initial-element nil)))
+  (metaboard (make-array (n-of 2 dims*) :initial-element nil))
+  (player-type 'sttt-player)
+  (flags '(:always-four :maybe-four)))
+
+(deftem (sttt-player (:conc-name nil) (:include player))
+  piece)
+
+(deftem (move (:conc-name nil))
+  orow ocol irow icol)
 
 (defmethod print-object ((game super-tic-tac-toe) stream)
   (let *standard-output* stream
@@ -27,7 +34,7 @@
       (up irow 0 dims*
         (up ocol 0 dims*
           (up icol 0 dims*
-            (prf "~:[ ~;~:*~A~]" game!board.orow.ocol.irow.icol)
+            (prf "~A" (aif game!board.orow.ocol.irow.icol it " "))
             (unless (is icol (dec dims*))
               (pr "|")))
           (unless (is ocol (dec dims*))
@@ -47,29 +54,34 @@
               (pr "**")))
           (prn))))))
 
-(defmethod start-game ((game super-tic-tac-toe))
-  (= game!current (car game!players))
-  (set-cont game!current!socket (play-turn))
-  (send :log game "STTT ~A~%" (len game!players))
-  (send :all game!current "1~%")
-  (send :all game!next    "2~%"))
+(defstart super-tic-tac-toe
+  (= player*!piece 'x)
+  (= (piece+next) 'o)
+  (= player*!cont (play-turn)))
 
-(def next (game)
+(def next ()
   "Returns the next player in the game."
-  (aif (cadr+mem game!current game!players)
+  (aif (cadr+mem player* game*!players)
     it
-    (car game!players)))
+    (car game*!players)))
 
-(defcont play-turn (? orow ocol)
-  (mvb (orow ocol irow icol) (read-input game* nil orow ocol)
-    (= game*!board.orow.ocol.irow.icol (if (is game*!current game*!players!car) 'x 'o))
-    (send :log nil "~A: ~A ~A ~A ~A~%" (inc+pos game*!current game*!players) orow ocol irow icol)
+(defcont play-turn (? prev-move)
+  (let move (read-move)
+    (validate move prev-move)
+    (perform-move move)
+    (send-move move prev-move)
     (if (winner)
       (do (announce-winner)
           (disconnect))
-      (do (= game*!current game*!next)
-          (send :all game*!current "~A ~A ~A ~A~%" orow ocol irow icol)
-          (set-cont game*!current!socket (play-turn irow icol))))))
+      (= (cont+next) (play-turn move)))))
+
+(defread super-tic-tac-toe nil
+  (let line (read-line :from player*!socket-stream)
+    (mvb (match strings) (scan-to-strings "^(?:(\\d*) (\\d*) )?(\\d*) (\\d*)\\s*$" line)
+      (unless match
+        (signal-malformed-input "'~A' is malformed input." (list (keep [isa _ 'standard-char] line))))
+      (let (orow ocol irow icol) (map (fif #'stringp #'parse-integer) strings)
+        (make-move :orow orow :ocol ocol :irow irow :icol icol)))))
 
 (def cell-winner (board)
   "Is there a winner for an individual cell."
@@ -115,46 +127,50 @@
 
 (def announce-winner ()
   "Announce the winner of the game*."
-  (if (is (winner) 'tie)
-      (send '(:all :log) game*!players "0~%")
-      (send '(:all :log) game*!players "~:[1~;2~]~%" (is (winner) 'o))))
+  (let winner (winner)
+    (if (is winner 'tie)
+        (send '(:all :log) game*!players "0~%")
+        (send '(:all :log) game*!players "~A~%" winner!num))))
 
-(defmethod read-input ((game super-tic-tac-toe) flag &rest args)
-  "Read the input for a tic-tac-toe game"
-  (withs ((orow ocol) args
-          player game!current
-          line (read-line :from player!socket!socket-stream))
-    (if (and orow (notevery #'idfn (linearlize game!board.orow.ocol)))
-        (mvb (match strings) (scan-to-strings "^(\\d*) (\\d)*\\s*$" line)
-          (unless match
-            (error 'invalid-move
-                   :format-control "'~A' is malformed input."
-                   :format-arguments (list )))
-          (let (irow icol) (map #'parse-integer strings)
-               #1=(do (unless (<= 0 irow (dec dims*))
-                        (error 'invalid-move
-                               :format-control "The inner row index ~A is illegal."
-                               :format-arguments (list irow)))
-                      (unless (<= 0 icol (dec dims*))
-                        (error 'invalid-move
-                               :format-control "The inner column index ~A is illegal."
-                               :format-arguments (list icol)))
-                    (when game!board.orow.ocol.irow.icol
-                      (error 'invalid-move :format-control "The square is already taken."))
-                    (values orow ocol irow icol))))
-        ;; Code to run if we need to pick up the outer row and outer column.
-        (mvb (match strings) (scan-to-strings "^(\\d*) (\\d*) (\\d*) (\\d*)\\s*$" line)
-          (unless match
-            (error 'invalid-move
-                   :format-control "~S is malformed input."
-                   :format-arguments (list (keep [isa _ 'standard-char] line))))
-          (let (orow ocol irow icol) (map #'parse-integer strings)
-               (unless (<= 0 orow (dec dims*))
-                 (error 'invalid-move
-                        :format-control "The outer row ~A is illegal."
-                        :format-arguments (list orow)))
-               (unless (<= 0 ocol (dec dims*))
-                 (error 'invalid-move
-                        :format-control "The outer column ~A is illegal."
-                        :format-arguments (list ocol)))
-               #1#)))))
+(def validate (move prev-move)
+  "Checks that MOVE is a valid move based on information from
+   PREV-MOVE. May modify MOVE to add some additional context."
+  (with-accessors ((orow orow) (ocol ocol) (irow irow) (icol icol)) move
+    (if (no prev-move)
+        (unless orow
+          (signal-invalid-move "No previous move, you need to specify the outer row ~
+                                and outer column."))
+        (with-accessors ((pirow irow) (picol icol)) prev-move
+          (if orow
+              (unless (and (is orow pirow) (is ocol picol))
+                (signal-invalid-move "The outer row and outer column do not match the previous ~
+                                      inner row and inner column."))
+              (= orow pirow
+                 ocol picol))))
+    (unless (<= 0 orow (dec dims*))
+      (signal-invalid-move "The outer row index ~A is illegal." orow))
+    (unless (<= 0 ocol (dec dims*))
+      (signal-invalid-move "The outer column index ~A is illegal." ocol))
+    (unless (<= 0 irow (dec dims*))
+      (signal-invalid-move "The inner row index ~A is illegal." irow))
+    (unless (<= 0 icol (dec dims*))
+      (signal-invalid-move "The inner column index is illegal." icol))
+    (when game*!metaboard.orow.ocol
+      (signal-invalid-move "A player already won that board."))
+    (when game*!board.orow.ocol.irow.icol
+      (signal-invalid-move "A player is already occupying that square."))
+    move))
+
+(def perform-move (move)
+  "Performs the acutal move."
+  (with-accessors ((orow orow) (ocol ocol) (irow irow) (icol icol)) move
+    (= game*!board.orow.ocol.irow.icol player*)))
+
+(def send-move (move prev-move)
+  "Sends the move to all of the other players."
+  (with-accessors ((orow orow) (ocol ocol) (irow irow) (icol icol)) move
+    (send :always-four (rem player* game*!players) "~A ~A ~A ~A~%" orow ocol irow icol)
+    (if (and prev-move (and (is prev-move!irow orow) (is prev-move!icol ocol)))
+        (send :maybe-four (rem player* game*!players) "~A ~A~%" irow icol)
+        (send :maybe-four (rem player* game*!players) "~A ~A ~A ~A~%" orow ocol irow icol))
+    (send :log nil "~A: ~A ~A ~A ~A~%" player*!num orow ocol irow icol)))

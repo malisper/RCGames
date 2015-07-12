@@ -65,6 +65,10 @@
    to all of the AI players."
   (mapc #'socket-close game!players)
   (zap #'set-difference sockets* game!players)
+  ;; This is needed in case the game was disconnected before it
+  ;; started. This means new players will keep being added to this
+  ;; game. We can just clear the players and everything will be fine.
+  (wipe game!players)
   (when log-file*
     (w/file (*standard-output* log-file*
              :direction :output

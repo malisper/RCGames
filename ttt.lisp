@@ -15,7 +15,7 @@
 (defparameter dims* 3 "The side length of the tic-tac-toe board.")
 
 ;; We only support one format for input and output in tic-tac-toe so
-;; there are no additional flags added.
+;; we do not need to override the flags slot.
 (deftem (tic-tac-toe (:conc-name nil) (:include game))
   (need 2)
   (board (make-array (list dims* dims*) :initial-element nil))
@@ -55,7 +55,7 @@
   (let line (read-line :from player*!socket-stream)
     (mvb (match strings) (scan-to-strings "^(\\d*) (\\d*)\\s*$" line)
       (unless match
-        (signal-malformed-input "~S is malformed input. The format should be 'ROW COL'." (list (keep [isa _ 'standard-char] line))))
+        (signal-malformed-input "'~A' is malformed input." (list (keep [isa _ 'standard-char] line))))
       (map #'parse-integer strings))))
 
 (def validate (move)
@@ -111,7 +111,8 @@
            'tie)))
 
 (def announce-winner ()
-  "Announce the winner of the game*. If it is a tie, send 0 to all of the players and the log. Otherwise send "
+  "Announce the winner of the game*. If it is a tie, send 0 to all of
+   the players and the log. Otherwise send the player number."
   (let winner (winner)
     (if (is winner 'tie)
         (send '(:all :log) game*!players "0~%")
