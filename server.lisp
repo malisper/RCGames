@@ -92,7 +92,7 @@
     (push player* sockets*)
     (if arr!aref!flags
         (= player*!cont (read-flags arr))
-        (attach-player player* arr!aref))))
+        (attach-player player* arr))))
 
 (defcont read-flags (arr)
   "Reads the flags from the player."
