@@ -44,17 +44,25 @@
   (:documentation "Reads the input for the game."))
 
 (mac defstart (game &body body)
+  "Define a function to start a game of type GAME."
   `(defmethod start-game ((,(gensym) ,game))
      ,@body))
 
 (mac defread (game flag &body body)
+  "Define a function to read the input from a player with FLAG
+   set. That function should only parse the input and make sure it is
+   in a valid format. It can, but doesn't have to check whether the
+   move is a legal move."
   `(defmethod read-input ((,(gensym) ,game)
                           ;; If there is no flag don't specify on it
                           ,(if (no flag) (gensym) `(,(gensym) (eql ,flag))))
      ,@body))
 
 (def read-move (? flags)
-  "Read a move from the given player with the format being one of FLAGS."
+  "Read a move from the given player with the format being one of
+   FLAGS. This will only parse the move and check that it is in a
+   valid format. Does no validation with respect to the move being a
+   legal move."
   (let int (intersection player*!flags (mklist flags))
     (unless (or (no flags) (single int))
       (if (and flags int)

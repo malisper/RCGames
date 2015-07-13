@@ -66,6 +66,8 @@
     (car game*!players)))
 
 (defcont play-turn (? prev-move)
+  "A continuation for taking the move the player sends in and
+   performing it."
   (let move (read-move)
     (validate move prev-move)
     (perform-move move)
@@ -75,6 +77,8 @@
           (disconnect))
       (= (cont+next) (play-turn move)))))
 
+;; Since we can represent both possible input formats for sttt with a
+;; single regex, there is no reason to have multiple read functions.
 (defread super-tic-tac-toe nil
   (let line (read-line :from player*!socket-stream)
     (mvb (match strings) (scan-to-strings "^(?:(\\d*) (\\d*) )?(\\d*) (\\d*)\\s*$" line)
