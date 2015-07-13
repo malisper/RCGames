@@ -1,7 +1,7 @@
 # Game-server
 A server to allow people to write AI that will compete against each other.
 
-For an AI to connect to a server, you connect to games.malisper.me on
+For an AI to connect to a server, you connect to games.recurse.com on
 the port specified by the game. If the game supports flags, the first
 line of input you send to the server should be a list of the flags you
 want. Flags allow you to customize how you send/receive the I/O. Once
