@@ -6,7 +6,7 @@ the port specified by the game. If the game supports flags, the first
 line of input you send to the server should be a list of the flags you
 want. Flags allow you to customize how you send/receive the I/O. Flags
 allow you to customize the format of the I/O. All of the flags
-supported by a game and their description is listed after the
+supported by a game and their descriptions are listed after the
 game. Once the game starts, each player will be sent their player
 number, starting from 1.
 
@@ -16,7 +16,7 @@ Regular old Tic-Tac-Toe.
 
 ### Flags
 
-No flags are supported for this game. To send in your move, is is "row
+No flags are supported for this game. To send in your move, send "row
 col" on its own line. Once your opponent makes their move, you will
 receive it as "row col" on its own line. This game is zero indexed. If
 you are going first you are expected to immediately send the move. If
