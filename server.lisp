@@ -40,10 +40,10 @@
       (each socket ready
         (aif2 (and (isa socket 'player)
                    (is socket (peek-char nil (socket-stream socket) nil socket)))
-              (do (send :all socket!game!players "~A~%" disconnected-code*)
-                  (disconnect socket!game)
-                  ;; We need to go through the loop again since we may
-                  ;; have disconnected some of the other ready sockets.
+              (do (disconnect-player socket)
+                  ;; We need to go through the outer loop again since
+                  ;; we may have disconnected some of the other ready
+                  ;; sockets.
                   (return))
               
               ;; I may want to change this to handler-case, but right
@@ -54,11 +54,20 @@
                               (call-cont socket))
                 (disconnect (c)
                   :report "Disconnect the current game."
-                  (send :all socket "~A~%" c!code)
-                  (send :all (rem socket socket!game!players) "~A~%" disconnected-code*)
-                  (disconnect socket!game)
+                  (disconnect-player socket c!code)                  
                   ;; Same as above with going through the loop again.
                   (return))))))))
+
+(def disconnect-player (player ? (code nil))
+  "Disconnect an individual player. Send CODE to that player and send
+   the disconnected-code* to all of the other players."
+  (when code
+    (send :all player "~A~%" code))
+  (if player!game
+      (do (send :all (rem player player!game!players) "~A~%" disconnected-code*)
+          (disconnect player!game))
+      (do (socket-close player)
+          (= sockets* (rem player sockets*)))))
 
 (def disconnect (? (game game*))
   "Disconnect a game. Sends INFO to all of the human players and CODE
@@ -78,29 +87,41 @@
 
 (defcont add-player (arr)
   "Connect a given player."
-  (let player player*!socket-accept
-    (change-class player arr!aref!player-type)
-    (push player sockets*)
-    (= player!cont (read-flags arr))))
+  (let player* player*!socket-accept
+    (change-class player* arr!aref!player-type)
+    (push player* sockets*)
+    (if arr!aref!flags
+        (= player*!cont (read-flags arr))
+        (attach-player player* arr!aref))))
 
 (defcont read-flags (arr)
   "Reads the flags from the player."
   ;; The dynamic value of game* needs to be seen by parse-flags.
   (withs (game* arr!aref
           flags (parse-flags))
-    (if (is flags :invalid)
-        (do (format player*!socket-stream "~A~%" invalid-flag-code*)
-            (force-output player*!socket-stream)
-            (= player*!cont (read-flags arr)))
-        (do (= player*!flags flags)
-            (= player*!game arr!aref)
-            (push player* game*!players)
-            (when (is game*!players!len game*!need)
-              ;; Have the continuation add players to a new game instead of
-              ;; the current one. It is safe to use type-of as it will always
-              ;; return the class-name of a class with a proper name.
-              (= arr!aref (inst (type-of game*)))
-              (start-game game*))))))
+    (= player*!flags flags)
+    (attach-player player* arr)))
+
+(def attach-player (player arr)
+  "Attach the player to the given game and maybe start it."
+  (let game arr!aref
+    (push player game!players)
+    (= player!game game)
+    (when (is game!players!len game!need)
+      ;; Have the continuation add players to a new game instead of
+      ;; the current one. It is safe to use type-of as it will always
+      ;; return the class-name of a class with a proper name.
+      (= arr!aref (inst (type-of game)))
+      (start-game game))))
+
+(def maybe-start-game (arr)
+  (let game* arr!aref
+    (when (is game*!players!len game*!need)
+      ;; Have the continuation add players to a new game instead of
+      ;; the current one. It is safe to use type-of as it will always
+      ;; return the class-name of a class with a proper name.
+      (= arr!aref (inst (type-of game*)))
+      (start-game game*))))
 
 (def parse-flags ()
   "Returns the flags the socket wants to use. If they aren't valid
@@ -109,7 +130,7 @@
        (tokens it)
        (map #'upcase it)
        (if (~valid it)
-           :invalid
+           (signal-invalid-flags "Included flag not in the flags of the game.")
            (map [intern _ :keyword] it))))
 
 (def valid (flags)

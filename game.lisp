@@ -25,8 +25,8 @@
 
 (defmethod start-game :around (game)
   "Bind player* and game* to the proper values before starting the game."
-  (withs (player* (car game*!players)
-          game* player*!game)
+  (withs (player* (car game!players)
+          game* game)
     (call-next-method)))
 
 (defmethod start-game :before (game)
@@ -35,7 +35,7 @@
   (iter (for i from 1)
         (for player in game!players)
         (= player!num i))
-  (send :log nil "~A ~A~%" (type-of game) (len game*!players))
+  (send :log nil "~A ~A~%" (type-of game) (len game!players))
   (send :log nil "~{~{~A~^.~}~^ ~}~%" (map (compose [coerce _ 'list] #'get-peer-address) game!players))
   (each player game*!players
     (send :all player "~A~%" player!num)))
