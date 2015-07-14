@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+
+import sys
+import subprocess
+import socket
+
+GAME_PORT_MAP = {
+    'tic-tac-toe': 7000,
+    'super-tic-tac-toe': 8000,
+}
+
+def main():
+  host = "games.recurse.com"
+  game = sys.argv[1].lower()
+  # If game isn't in the map, assume it's the port number.
+  port = GAME_PORT_MAP.get(game, None) or int(game)
+
+  skt = socket.create_connection((host, port))
+  p = subprocess.call(sys.argv[2:], stdout=skt, stdin=skt)
+ 
+
+if __name__ == '__main__':
+  main()
