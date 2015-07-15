@@ -48,3 +48,29 @@ With this flag set, you will receive "inner-row inner-col" as long as
 your opponent does not get to choose the board they are playing on. If
 they do get to choose, you will receive "outer-row outer-col inner-row
 inner-col".
+
+## Checkers
+
+This is Checkers where you have to capture a piece if you are able to.
+
+### Flags
+
+Player 1 is on the top of the board and player 2 is on the bottom. The
+input and output format is a list of squares seperated by a hypen
+('-'). If a piece moves only a single square, you list the starting
+square followed up by the ending square. If a piece is jumping over
+other pieces, each square the piece lands on along the way will be
+part of the list.
+
+##### Traditional
+
+For this format each square is represented as a number between 1 and
+32. To see the mapping look at
+[this](http://media-2.web.britannica.com/eb-media/43/57543-004-1F90064A.jpg)
+image.
+
+##### Algebraic
+
+This is where each square is represented by its row and column using a
+letter for the column and a number for the row. For example the square
+"a2" is the second square in the bottom row.
