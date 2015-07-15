@@ -12,4 +12,5 @@
                (:file "game" :depends-on ("error" "package" "continuations"))
                (:file "server" :depends-on ("package" "continuations" "game" "classes"))
                (:file "ttt" :depends-on ("package" "continuations" "game" "server"))
-               (:file "sttt" :depends-on ("package" "continuations" "game" "server"))))
+               (:file "sttt" :depends-on ("package" "continuations" "game" "server"))
+               (:file "checkers" :depends-on ("package" "server" "classes" "game"))))
