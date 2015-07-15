@@ -9,6 +9,7 @@
            :game* :player*
            :game :need :players :flags :player-type
            :player :num
+           :board-game :board
 
            :no-continuation :game-error
            :invalid-move :signal-invalid-move

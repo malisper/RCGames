@@ -7,6 +7,7 @@ import socket
 GAME_PORT_MAP = {
     'tic-tac-toe': 7000,
     'super-tic-tac-toe': 8000,
+    'checkers': 9000
 }
 
 def main():

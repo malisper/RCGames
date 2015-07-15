@@ -14,7 +14,7 @@
 
 (defparameter dims* 3 "The side length of the super tic-tac-toe board.")
 
-(deftem (super-tic-tac-toe (:conc-name nil) (:include game))
+(deftem (super-tic-tac-toe (:conc-name nil) (:include board-game))
   (need 2)
   (board (make-array (n-of 4 dims*) :initial-element nil))
   (metaboard (make-array (n-of 2 dims*) :initial-element nil))
@@ -34,7 +34,7 @@
       (up irow 0 dims*
         (up ocol 0 dims*
           (up icol 0 dims*
-            (prf "~A" (aif game!board.orow.ocol.irow.icol it " "))
+            (prf "~A" (aif game.orow.ocol.irow.icol it " "))
             (unless (is icol (dec dims*))
               (pr "|")))
           (unless (is ocol (dec dims*))
@@ -108,7 +108,7 @@
   "Is there a winner for the entire game?"
   (up r 0 dims*
     (up c 0 dims*
-      (or= game*!metaboard.r.c (cell-winner game*!board.r.c))))
+      (or= game*!metaboard.r.c (cell-winner game*.r.c))))
   (or (iter (for r from 0 below dims*)
             (thereis (iter (for c from 0 below dims*)
                            (always (and (is game*!metaboard.r.c game*!metaboard.r.0) game*!metaboard.r.0)))))
@@ -161,14 +161,14 @@
       (signal-invalid-move "The inner column index is illegal." icol))
     (when game*!metaboard.orow.ocol
       (signal-invalid-move "A player already won that board."))
-    (when game*!board.orow.ocol.irow.icol
+    (when game*.orow.ocol.irow.icol
       (signal-invalid-move "A player is already occupying that square."))
     move))
 
 (def perform-move (move)
   "Performs the acutal move."
   (with-accessors ((orow orow) (ocol ocol) (irow irow) (icol icol)) move
-    (= game*!board.orow.ocol.irow.icol player*)))
+    (= game*.orow.ocol.irow.icol player*)))
 
 (def send-move (move prev-move)
   "Sends the move to all of the other players."

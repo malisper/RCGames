@@ -14,3 +14,19 @@
 
 (deftem (game (:conc-name nil))
   need players game-log flags (player-type 'player))
+
+;; Makes accessing into a game with a board easier.
+(deftem (board-game (:conc-name nil) (:include game))
+  board)
+
+(defmethod get ((b board-game) (p list))
+  (get b!board p))
+
+(defmethod (setf get) (val (b board-game) (p list))
+  (= (get b!board p) val))
+
+(defmethod get ((b board-game) (p number))
+  (get b!board p))
+
+(defmethod (setf get) (val (b board-game) (p number))
+  (setf (get b!board p) val))

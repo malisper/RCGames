@@ -16,7 +16,7 @@
 
 ;; We only support one format for input and output in tic-tac-toe so
 ;; we do not need to override the flags slot.
-(deftem (tic-tac-toe (:conc-name nil) (:include game))
+(deftem (tic-tac-toe (:conc-name nil) (:include board-game))
   (need 2)
   (board (make-array (list dims* dims*) :initial-element nil))
   (player-type 'ttt-player))
@@ -28,7 +28,7 @@
   (let *standard-output* stream
     (up r 0 dims*
       (up c 0 dims*
-        (prf "~A" (aif game!board.r.c it!piece " "))
+        (prf "~A" (aif game.r.c it!piece " "))
         (unless (is c (dec dims*))
           (pr "|")))
       (prn)
@@ -65,14 +65,14 @@
       (signal-invalid-move "The row ~A is illegal, should be between 0 and ~A." r (dec dims*)))
     (unless (<= 0 c (dec dims*))
       (signal-invalid-move "The column ~A is illegal, should be between 0 and ~A." c (dec dims*)))
-    (when game*!board.r.c
+    (when game*.r.c
       (signal-invalid-move "The square (~A,~A) is already taken." r c))))
 
 (def perform-move (move)
   "Actually perform the move on the board. This is the only function
    allowed to mutate the board."
   (let (r c) move
-    (= game*!board.r.c player*)))
+    (= game*.r.c player*)))
 
 (def send-move (move)
   "Send the move to all of the other players."
@@ -92,22 +92,22 @@
   ;; winning player.
   (or (iter (for r from 0 below dims*)
             (thereis (iter (for c from 0 below dims*)
-                           (always (and (is game*!board.r.c game*!board.r.0) game*!board.r.0)))))
+                           (always (and (is game*.r.c game*.r.0) game*.r.0)))))
       (iter (for c from 0 below dims*)
             (thereis (iter (for r from 0 below dims*)
-                           (always (and (is game*!board.r.c game*!board.0.c) game*!board.0.c)))))
+                           (always (and (is game*.r.c game*.0.c) game*.0.c)))))
       (and (iter (for i from 0 below dims*)
-                 (always (and (is game*!board.i.i game*!board.0.0))))
-           game*!board.0.0)
+                 (always (and (is game*.i.i game*.0.0))))
+           game*.0.0)
       (and (iter (for r from 0 below dims*)
                  (for c from (dec dims*) downto 0)
-                 (always (and (is game*!board.r.c (get game*!board.0 (dec dims*)))
-                              game*!board.r.c)))
-           (get game*!board.0 (dec dims*)))
+                 (always (and (is game*.r.c (get game*.0 (dec dims*)))
+                              game*.r.c)))
+           (get game*.0 (dec dims*)))
       (and (iter out
                  (for r from 0 below dims*)
                  (iter (for c from 0 below dims*)
-                       (in out (always game*!board.r.c))))
+                       (in out (always game*.r.c))))
            'tie)))
 
 (def announce-winner ()
