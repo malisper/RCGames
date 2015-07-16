@@ -63,7 +63,8 @@
    FLAGS. This will only parse the move and check that it is in a
    valid format. Does no validation with respect to the move being a
    legal move."
-  (let int (intersection player*!flags (mklist flags))
+  (zap #'mklist flags)
+  (let int (if (single flags) flags (intersection player*!flags flags))
     (unless (or (no flags) (single int))
       (if (and flags int)
           (signal-invalid-flags "None of the flags in ~A are members of ~A." player*!flags flags)

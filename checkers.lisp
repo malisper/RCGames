@@ -1,12 +1,11 @@
 (defpackage :checkers
-  (:nicknames :checkers)
   (:use :clamp :experimental :iter :usocket :ppcre :server)
   (:shadowing-import-from :experimental
      :repeat :def :fn :defmemo :mac :while
      :until :in :coerce :with :summing :defmethod)
   (:shadowing-import-from :ppcre :split)
   (:shadow :server :next)
-  (:export :super-tic-tac-toe))
+  (:export :checkers))
 
 (in-package :checkers)
 (syntax:use-syntax :clamp)
