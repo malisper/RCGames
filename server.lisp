@@ -39,7 +39,7 @@
     (let ready (wait-for-input sockets* :ready-only t)
       (each socket ready
         (aif2 (and (isa socket 'player)
-                   (is socket (peek-char nil (socket-stream socket) nil socket)))
+                   (nth-value 1 (ignore-errors (peek-char nil (socket-stream socket)))))
               (do (disconnect-player socket)
                   ;; We need to go through the outer loop again since
                   ;; we may have disconnected some of the other ready
