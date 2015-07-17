@@ -146,13 +146,14 @@
 
 (def flush (hand)
   "Does this hand contain a flush?"
-  (every [is _!suit hand!car!suit] hand))
+  (and (is hand!len 5)
+       (every [is _!suit hand!car!suit] hand)))
 
 (def straight (hand)
   "Does this hand contain a straight?"
   (withs (ranks  (map #'rank hand)
           scores (map #'convert ranks))
-    (and (is (len hand) 5)
+    (and (is hand!len 5)
          (every [is _ 1] (vals (counts scores)))
          (with (smallest (best #'< scores)
                 sum (reduce #'+ scores))
@@ -173,7 +174,12 @@
        ;; different rank in proper order.
        (sort #'rank> it #'car)
        (ssort #'> it #'cadr)
-       (when (or (no ranks) (iso (map #'cadr it) ranks))
+       (when (or (no ranks)
+                 (iso (map #'cadr it)
+                      (if (and (is hand!len 3)
+                               (iso (lastcons ranks 2) '(1 1)))
+                          (butlast ranks 2)
+                          ranks)))
          (cars it))))
 
 (mac gen-score-body (hand &rest hands)
