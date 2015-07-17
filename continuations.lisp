@@ -23,8 +23,7 @@
       (restart-case (signal-no-continuation "No continuation found for the given object.")
         (ignore-input ()
           :report "Ignore all of the input from the obj."
-          (while (listen obj!obj-stream)
-            (read-line :from obj!obj-stream)))))))
+          (clear-input obj!socket-stream))))))
 
 (defmethod call-cont :around ((obj player))
   (let game* obj!game

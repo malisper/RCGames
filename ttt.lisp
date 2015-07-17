@@ -76,8 +76,7 @@
 
 (def send-move (move)
   "Send the move to all of the other players."
-  (send :all (rem player* game*!players) "~{~A ~A~}~%" move)
-  (send :log nil "~A: ~{~A ~A~}~%" player*!num move))
+  (send '(:all :logp) (rem player* game*!players) "~{~A ~A~}~%" move))
 
 (def next ()
   "Returns the next player in the game."

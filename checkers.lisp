@@ -124,7 +124,7 @@
   "Sends the move to all of the players."
   (let other-players (rem player* game*!players)
     (send :algebraic other-players "~{~A~^-~}~%" (map #'point->algebraic move))
-    (send '(:traditional :log) other-players "~{~A~^-~}~%"
+    (send '(:traditional :logp) other-players "~{~A~^-~}~%"
           (map #'point->traditional move))))
 
 (def perform-move (start end pieces-to-remove)

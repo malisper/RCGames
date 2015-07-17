@@ -173,8 +173,7 @@
 (def send-move (move prev-move)
   "Sends the move to all of the other players."
   (with-accessors ((orow orow) (ocol ocol) (irow irow) (icol icol)) move
-    (send :always-four (rem player* game*!players) "~A ~A ~A ~A~%" orow ocol irow icol)
+    (send '(:always-four :logp) (rem player* game*!players) "~A ~A ~A ~A~%" orow ocol irow icol)
     (if (and prev-move (and (is prev-move!irow orow) (is prev-move!icol ocol)))
         (send :maybe-four (rem player* game*!players) "~A ~A~%" irow icol)
-        (send :maybe-four (rem player* game*!players) "~A ~A ~A ~A~%" orow ocol irow icol))
-    (send :log nil "~A: ~A ~A ~A ~A~%" player*!num orow ocol irow icol)))
+        (send :maybe-four (rem player* game*!players) "~A ~A ~A ~A~%" orow ocol irow icol))))

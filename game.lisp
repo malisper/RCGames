@@ -15,9 +15,11 @@
     (let stream player!socket-stream
       (apply #'format stream args)
       (force-output stream)))
-  (when (mem :log flags)
+  (awhen (intersection '(:log :logp) flags)
     (when show-output*
-      (apply #'prf args))
+      (if (mem :logp it)
+          (apply #'prf "~A:~@?" player*!num args)
+          (apply #'prf "~@?" args)))
     (push (apply #'format nil args) game*!game-log)))
 
 (defgeneric start-game (game)

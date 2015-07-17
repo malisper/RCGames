@@ -40,6 +40,9 @@
   (let moves (read-move :init)
     (unless (is (len moves) (len cards))
       (signal-malformed-input "The wrong number of moves were entered."))
+    ;; This entire thing prints one line so we need to add the player
+    ;; number to the log.
+    (send :logp nil "")
     (iter (for card in cards)
           (for move in moves)
           (validate move)
@@ -58,7 +61,7 @@
   (let move (read-move :turn)
     (validate move)
     (perform-move move card)
-    (send '(:all :log) (rem player* game*!players) "~A~%" move)
+    (send '(:all :logp) (rem player* game*!players) "~A~%" move)
     (if (over)
         (do (announce-winners)
             (disconnect))
