@@ -52,9 +52,9 @@
               ;; disconnect restart.
               (restart-case (handler-bind ((game-error #'disconnect-handler))
                               (call-cont socket))
-                (disconnect (c)
+                (disconnect (&optional c)
                   :report "Disconnect the current game."
-                  (disconnect-player socket c!code)                  
+                  (disconnect-player socket (if c c!code unknown-error-code*))                  
                   ;; Same as above with going through the loop again.
                   (return))))))))
 
