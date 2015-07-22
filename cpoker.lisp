@@ -109,8 +109,11 @@
                         (mapeach player game*!players
                           (+ (- (* game*!players!len!dec (if (valid player) (* 2 (player-royalties player)) 0))
                                 total)
+                             ;; You initially pay 1 for each hand.
                              (+ -3
-                                (* 2
+                                ;; You pay one less and gain two for
+                                ;; every hand you win.
+                                (* 3
                                    (iter (for i from 0 below 3)
                                          (counting (is player (best #'hand> game*!players [idfn _!hands.i])))))))))))
 
