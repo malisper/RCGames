@@ -107,7 +107,7 @@
   (send '(:all :log) game*!players
         "~{~A~^ ~}~%" (let total (all-royalites game*!players)
                         (mapeach player game*!players
-                          (+ (- (* game*!players!len!dec (if (valid player) (* 2 (player-royalties player)) 0))
+                          (+ (- (* game*!players!len (if (valid player) (player-royalties player) 0))
                                 total)
                              ;; You initially pay 1 for each hand.
                              (+ -3
