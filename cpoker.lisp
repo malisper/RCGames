@@ -109,8 +109,10 @@
                         (mapeach player game*!players
                           (+ (- (* game*!players!len!dec (if (valid player) (player-royalties player) 0))
                                 total)
-                             (iter (for i from 0 below 3)
-                                   (counting (is player (best #'hand> game*!players [idfn _!hands.i])))))))))
+                             (+ -3
+                                (* 2
+                                   (iter (for i from 0 below 3)
+                                         (counting (is player (best #'hand> game*!players [idfn _!hands.i])))))))))))
 
 (def valid (player)
   "Did this player end up with a valid hand, as in did they not fault."
@@ -268,10 +270,11 @@
        (counts it)
        (tablist it)
        (best #'> it #'cadr)
-       (case (cadr it)
-         3 (- 22 (pos (car it) ranks*))
-         2 (- 9  (pos (car it) ranks*))
-         t 0)))
+       (max (case (cadr it)
+              3 (- 22 (pos (car it) ranks*))
+              2 (- 9  (pos (car it) ranks*))
+              t 0)
+            0)))
 
 (def player-royalties (player)
   "Calculates the total royalties a single player won."
