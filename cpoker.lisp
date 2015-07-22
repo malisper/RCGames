@@ -109,7 +109,7 @@
                         (mapeach player game*!players
                           (+ (- (* game*!players!len!dec (if (valid player) (player-royalties player) 0))
                                 total)
-                             (+ -3
+                             (+ -2
                                 (* 2
                                    (iter (for i from 0 below 3)
                                          (counting (is player (best #'hand> game*!players [idfn _!hands.i])))))))))))
