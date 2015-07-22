@@ -103,12 +103,14 @@
 
 (def announce-winners ()
   "Announce the winners of the game."
+  (send '(:all :log) game*!players "~{~{~{~{~A~A~}~^ ~}~^~5@T~}~%~}" (map #'hands game*!players))
   (send '(:all :log) game*!players
-    "~{~A~^ ~}~%" (iter (for i from 0 below 3)
-                        (collect (aif (best #'hand> (keep #'valid game*!players)
-                                            [idfn _!hands.i])
-                                   (num it)
-                                   0)))))
+        "~{~A~^ ~}~%" (let total (all-royalites game*!players)
+                        (mapeach player game*!players
+                          (+ (- (* game*!players!len!dec (if (valid player) (player-royalties player) 0))
+                                total)
+                             (iter (for i from 0 below 3)
+                                   (counting (is player (best #'hand> game*!players [idfn _!hands.i])))))))))
 
 (def valid (player)
   "Did this player end up with a valid hand, as in did they not fault."
@@ -238,3 +240,46 @@
       (each rank ranks*
         (each suit suits*
           (a (make-card rank suit)))))))
+
+(def royalties-bottom (hand)
+  "Calculates the royalites for the bottom hand."
+  (or (hand-match x hand
+        (t t     1 1 1 1 1) (if (find 'a hand :key #'rank) 25 15)
+        (nil nil 4 1)       10
+        (nil nil 3 2)       6
+        (t nil   1 1 1 1 1) 4
+        (nil t   1 1 1 1 1) 2)
+      0))
+
+(def royalties-middle (hand)
+  "Calculates the royalites for the bottom hand."
+  (or (hand-match x hand
+        (t t     1 1 1 1 1) (if (find 'a hand :key #'rank) 50 30)
+        (nil nil 4 1)       20
+        (nil nil 3 2)       12
+        (t nil   1 1 1 1 1) 8
+        (nil t   1 1 1 1 1) 4
+        (nil nil 3 1 1)     2)
+      0))
+
+(def royalites-top (hand)
+  "Calculates the royalties for the top hand."
+  (ado (map #'rank hand)
+       (counts it)
+       (tablist it)
+       (best #'> it #'cadr)
+       (case (cadr it)
+         3 (- 22 (pos (car it) ranks*))
+         2 (- 9  (pos (car it) ranks*))
+         t 0)))
+
+(def player-royalties (player)
+  "Calculates the total royalties a single player won."
+  (let (top mid bot) player!hands
+    (+ (royalites-top top)
+       (royalties-middle mid)
+       (royalties-bottom bot))))
+
+(def all-royalites (players)
+  "Calulates the total amount of royalties won."
+  (reduce #'+ (keep #'valid players) :key #'player-royalties))
