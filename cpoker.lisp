@@ -116,7 +116,9 @@
                                 (* 3
                                    (iter (for i from 0 below 3)
                                          (counting (and (valid player)
-                                                        (is player (best #'hand> game*!players [idfn _!hands.i]))))))))))))
+                                                        (is player (best #'hand>
+                                                                         (keep #'valid game*!players)
+                                                                         [idfn _!hands.i]))))))))))))
 
 (def valid (player)
   "Did this player end up with a valid hand, as in did they not fault."
