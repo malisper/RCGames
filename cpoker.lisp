@@ -105,8 +105,12 @@
   "Announce the winners of the game."
   (send '(:all :log) game*!players "~{~{~{~{~A~A~}~^ ~}~^~5@T~}~%~}" (map #'hands game*!players))
   (send '(:all :log) game*!players
-        "~{~A~^ ~}~%" (let total (all-royalites game*!players)
+        "~{~A~^ ~}~%" (withs (total (all-royalites game*!players) valid (keep #'valid game*!players)
+                              bestt (best #'hand> valid [idfn _!hands.0])
+                              bestm (best #'hand> valid [idfn _!hands.1])
+                              bestb (best #'hand> valid [idfn _!hands.2]))
                         (mapeach player game*!players
+                          ;; We subtract all royalties and then add the royalties for the player back.
                           (+ (- (* game*!players!len (if (valid player) (player-royalties player) 0))
                                 total)
                              ;; You initially pay 1 for each hand.
@@ -118,7 +122,13 @@
                                          (counting (and (valid player)
                                                         (is player (best #'hand>
                                                                          (keep #'valid game*!players)
-                                                                         [idfn _!hands.i]))))))))))))
+                                                                         [idfn _!hands.i]))))))
+                                ;; If a player has the best hand for
+                                ;; all of them they sweep and get
+                                ;; extra three points per player.
+                                (if (and (is bestt bestm) (is bestm bestb))
+                                    (if (is bestt player) (* game*!players!len!dec 3) (- 3))
+                                    0)))))))
 
 (def valid (player)
   "Did this player end up with a valid hand, as in did they not fault."
